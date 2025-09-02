@@ -25,5 +25,5 @@ export function updatePostHandler(req: Request<{ id: string }, {}, PostInputDto>
     }
     PostsRepository.update(id, {...req.body, blogName: blog.name });
 
-    return res.status(HttpStatus.NoContent);
+    return res.sendStatus(HttpStatus.NoContent);
 }

@@ -12,5 +12,5 @@ export function deletePostHandler(req: Request, res: Response) {
             .send(createErrorMessages([{field: 'id', message: 'Post not found'}]));
     }
     PostsRepository.delete(id);
-    return res.status(HttpStatus.NoContent);
+    return res.sendStatus(HttpStatus.NoContent);
 }

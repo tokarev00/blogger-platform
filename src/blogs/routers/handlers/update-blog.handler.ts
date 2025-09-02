@@ -20,5 +20,5 @@ export function updateBlogHandler(req: Request<{ id: string }, {}, BlogInputDto>
 
     BlogsRepository.update(id, req.body);
     
-    return res.status(HttpStatus.NoContent);
+    return res.sendStatus(HttpStatus.NoContent);
 }

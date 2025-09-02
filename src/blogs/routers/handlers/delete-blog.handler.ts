@@ -12,5 +12,5 @@ export function deleteBlogHandler(req: Request, res: Response) {
             .send(createErrorMessages([{field: 'id', message: 'Blog not found'}]));
     }
     BlogsRepository.delete(id);
-    return res.status(HttpStatus.NoContent);
+    return res.sendStatus(HttpStatus.NoContent);
 }
