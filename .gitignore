@@ -1,0 +1,18 @@
+# Исключаем IDE-файлы
+.idea/
+.vscode/
+
+# Node.js зависимости
+node_modules/
+
+# macOS системные файлы
+.DS_Store
+
+# Временные файлы
+*.log
+*.tmp
+*.swp
+
+# Переменные окружения
+.env
+env
