@@ -5,7 +5,7 @@ import {NextFunction, Response, Request} from "express";
 import {HttpStatus} from "../../types/http-statuses";
 
 export const createErrorMessages = (errors: FieldError[]): ResultError => {
-    return {errorMessages: errors};
+    return {errorsMessages: errors};
 }
 
 const formatError = (error: ValidationError): FieldError => {
