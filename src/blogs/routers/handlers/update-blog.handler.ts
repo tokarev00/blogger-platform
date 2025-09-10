@@ -6,10 +6,10 @@ import {HttpStatus} from "../../../core/types/http-statuses";
 import {createErrorMessages} from "../../../core/middlewares/validation/input-validation-result.middleware";
 
 
-export function updateBlogHandler(req: Request<{ id: string }, {}, BlogInputDto>, res: Response) {
+export async function updateBlogHandler(req: Request<{ id: string }, {}, BlogInputDto>, res: Response) {
     const id = String(req.params.id);
 
-    const blog: Blog|null = BlogsRepository.findById(id);
+    const blog: Blog | null = await BlogsRepository.findById(id);
 
     if (!blog) {
         return res.status(HttpStatus.NotFound)
@@ -18,7 +18,7 @@ export function updateBlogHandler(req: Request<{ id: string }, {}, BlogInputDto>
             );
     }
 
-    BlogsRepository.update(id, req.body);
-    
+    await BlogsRepository.update(id, req.body);
+
     return res.sendStatus(HttpStatus.NoContent);
 }

@@ -4,9 +4,9 @@ import {HttpStatus} from "../../../core/types/http-statuses";
 import {createErrorMessages} from "../../../core/middlewares/validation/input-validation-result.middleware";
 
 
-export function getBlogHandler(req: Request, res: Response) {
+export async function getBlogHandler(req: Request, res: Response) {
     const id = String(req.params.id);
-    const blog = BlogsRepository.findById(id);
+    const blog = await BlogsRepository.findById(id);
 
     if (!blog) {
         return res

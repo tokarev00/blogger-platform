@@ -5,12 +5,12 @@ import {Blog} from "../../types/blog";
 import {HttpStatus} from "../../../core/types/http-statuses";
 
 
-export function createBlogHandler(req: Request<{}, {}, BlogInputDto>, res: Response) {
+export async function createBlogHandler(req: Request<{}, {}, BlogInputDto>, res: Response) {
     const newBlogData = {
         name: req.body.name,
         description: req.body.description,
         websiteUrl: req.body.websiteUrl,
-    }
-    const newBlog: Blog = BlogsRepository.create(newBlogData);
+    };
+    const newBlog: Blog = await BlogsRepository.create(newBlogData);
     return res.status(HttpStatus.Created).send(newBlog);
 }
