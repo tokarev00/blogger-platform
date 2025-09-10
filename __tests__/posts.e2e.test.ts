@@ -2,6 +2,7 @@ import request from "supertest";
 import express from "express";
 import { setupApp } from "../src/setup-app";
 import { HttpStatus } from "../src/core/types/http-statuses";
+import { runDb, closeDb } from "../src/db/mongo-db";
 
 const app = setupApp(express());
 const authHeader = "Basic " + Buffer.from("admin:qwerty").toString("base64");
@@ -20,6 +21,14 @@ const createBlog = async () => {
 };
 
 describe("/posts", () => {
+  beforeAll(async () => {
+    await runDb();
+  });
+
+  afterAll(async () => {
+    await closeDb();
+  });
+
   beforeEach(async () => {
     await request(app).delete("/testing/all-data");
   });
@@ -88,6 +97,7 @@ describe("/posts", () => {
       content: "Content",
       blogId: blog.id,
       blogName: blog.name,
+      createdAt: expect.any(String),
     });
 
     const getRes = await request(app)
@@ -139,6 +149,7 @@ describe("/posts", () => {
       content: "New content",
       blogId: newBlog.body.id,
       blogName: newBlog.body.name,
+      createdAt: postRes.body.createdAt,
     });
   });
 

@@ -1,37 +1,50 @@
-import {Blog} from "../types/blog";
-import {db} from "../../db/in-memory.db";
+import {ObjectId} from 'mongodb';
+import {Blog} from '../types/blog';
+import {blogsCollection, BlogDb} from '../../db/mongo-db';
+
+const mapBlog = (blog: BlogDb): Blog => ({
+    id: blog._id.toString(),
+    name: blog.name,
+    description: blog.description,
+    websiteUrl: blog.websiteUrl,
+    createdAt: blog.createdAt,
+    isMembership: blog.isMembership,
+});
 
 export const BlogsRepository = {
-    findAll() : Array<Blog> {
-        return db.blogs;
+    async findAll(): Promise<Blog[]> {
+        const blogs = await blogsCollection.find().toArray();
+        return blogs.map(mapBlog);
     },
-    findById (id: string): Blog | null {
-        const blog = db.blogs.find((b) => b.id === id);
-        if (!blog) {
-            return null;
-        }
-        return blog;
+    async findById(id: string): Promise<Blog | null> {
+        const blog = await blogsCollection.findOne({_id: new ObjectId(id)});
+        return blog ? mapBlog(blog) : null;
     },
-    create (blog: Omit<Blog, 'id'>): Blog {
-        const newBlog: Blog = {...blog, id: db.generateFakeObjectId()};
-        db.blogs.push(newBlog);
-        return newBlog;
+    async create(blog: Omit<Blog, 'id' | 'createdAt' | 'isMembership'>): Promise<Blog> {
+        const newBlog: BlogDb = {
+            _id: new ObjectId(),
+            name: blog.name,
+            description: blog.description,
+            websiteUrl: blog.websiteUrl,
+            createdAt: new Date().toISOString(),
+            isMembership: false,
+        };
+        await blogsCollection.insertOne(newBlog);
+        return mapBlog(newBlog);
     },
-    update (id: string, updatedBlog: Omit<Blog, 'id'>): void {
-        const blog = this.findById(id);
-        if (!blog) {
+    async update(id: string, updatedBlog: Omit<Blog, 'id' | 'createdAt' | 'isMembership'>): Promise<void> {
+        const result = await blogsCollection.updateOne(
+            {_id: new ObjectId(id)},
+            {$set: {name: updatedBlog.name, description: updatedBlog.description, websiteUrl: updatedBlog.websiteUrl}}
+        );
+        if (result.matchedCount === 0) {
             throw new Error('Blog not exists');
         }
-        blog.name = updatedBlog.name;
-        blog.description = updatedBlog.description;
-        blog.websiteUrl = updatedBlog.websiteUrl;
-        return;
     },
-    delete (id: string): void {
-        const blogIndex = db.blogs.findIndex((b) => b.id === id);
-        if (blogIndex === -1) {
+    async delete(id: string): Promise<void> {
+        const result = await blogsCollection.deleteOne({_id: new ObjectId(id)});
+        if (result.deletedCount === 0) {
             throw new Error('Blog not exists');
         }
-        db.blogs.splice(blogIndex, 1)
-    }
-}
+    },
+};

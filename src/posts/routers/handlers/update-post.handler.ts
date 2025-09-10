@@ -5,9 +5,9 @@ import {HttpStatus} from "../../../core/types/http-statuses";
 import {createErrorMessages} from "../../../core/middlewares/validation/input-validation-result.middleware";
 import {BlogsRepository} from "../../../blogs/repositories/blogs.repository";
 
-export function updatePostHandler(req: Request<{ id: string }, {}, PostInputDto>, res: Response) {
+export async function updatePostHandler(req: Request<{ id: string }, {}, PostInputDto>, res: Response) {
     const id = String(req.params.id);
-    const post = PostsRepository.findById(id);
+    const post = await PostsRepository.findById(id);
     if (!post) {
         res
             .status(HttpStatus.NotFound)
@@ -16,14 +16,14 @@ export function updatePostHandler(req: Request<{ id: string }, {}, PostInputDto>
             );
         return;
     }
-    const blog  = BlogsRepository.findById(req.body.blogId)
+    const blog  = await BlogsRepository.findById(req.body.blogId);
     if (!blog) {
         return res.status(HttpStatus.NotFound)
             .send(
                 createErrorMessages([{ field: 'blogId', message: 'Blog not found' }]),
             );
     }
-    PostsRepository.update(id, {...req.body, blogName: blog.name });
+    await PostsRepository.update(id, {...req.body, blogName: blog.name });
 
     return res.sendStatus(HttpStatus.NoContent);
 }
