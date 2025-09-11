@@ -14,5 +14,5 @@ node_modules/
 *.swp
 
 # Переменные окружения
-.env
+.env.example
 env
