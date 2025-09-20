@@ -8,12 +8,22 @@ import {blogInputValidation} from "../validation/validate-blog-input.middleware"
 import {createBlogHandler} from "./handlers/create-blog.handler";
 import {updateBlogHandler} from "./handlers/update-blog.handler";
 import {deleteBlogHandler} from "./handlers/delete-blog.handler";
+import {getBlogPostsHandler} from "./handlers/get-blog-posts.handler";
+import {postForBlogInputValidation} from "../../posts/validation/validate-post-for-blog-input.middleware";
+import {createBlogPostHandler} from "./handlers/create-blog-post.handler";
 
 export const blogsRouter = Router();
 
 
 blogsRouter
     .get('/', getBlogListHandler)
+
+    .get(
+        '/:id/posts',
+        idValidation,
+        inputValidationResultMiddleware,
+        getBlogPostsHandler,
+    )
 
     .get(
         '/:id',
@@ -27,6 +37,14 @@ blogsRouter
         blogInputValidation,
         inputValidationResultMiddleware,
         createBlogHandler
+    )
+    .post(
+        '/:id/posts',
+        superAdminGuardMiddleware,
+        idValidation,
+        postForBlogInputValidation,
+        inputValidationResultMiddleware,
+        createBlogPostHandler,
     )
     .put(
         '/:id',

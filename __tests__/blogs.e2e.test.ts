@@ -8,6 +8,20 @@ const app = setupApp(express());
 const authHeader = "Basic " + Buffer.from("admin:qwerty").toString("base64");
 const nonExistingId = "123456789012345678901234";
 
+const createBlog = async () => {
+  const res = await request(app)
+    .post("/blogs")
+    .set("Authorization", authHeader)
+    .send({
+      name: "Blog",
+      description: "Desc",
+      websiteUrl: "https://example.com",
+    })
+    .expect(HttpStatus.Created);
+
+  return res.body;
+};
+
 describe("/blogs", () => {
   beforeAll(async () => {
     await runDb();
@@ -135,6 +149,105 @@ describe("/blogs", () => {
 
     await request(app)
       .get(`/blogs/${createRes.body.id}`)
+      .expect(HttpStatus.NotFound);
+  });
+});
+
+describe("/blogs/:id/posts", () => {
+  beforeAll(async () => {
+    await runDb();
+  });
+
+  afterAll(async () => {
+    await closeDb();
+  });
+
+  beforeEach(async () => {
+    await request(app).delete("/testing/all-data");
+  });
+
+  it("should return 404 for not existing blog", async () => {
+    await request(app)
+      .get(`/blogs/${nonExistingId}/posts`)
+      .expect(HttpStatus.NotFound);
+  });
+
+  it("should return empty array when blog exists without posts", async () => {
+    const blog = await createBlog();
+
+    const res = await request(app)
+      .get(`/blogs/${blog.id}/posts`)
+      .expect(HttpStatus.Ok);
+
+    expect(res.body).toEqual([]);
+  });
+
+  it("should not create post without auth", async () => {
+    const blog = await createBlog();
+
+    await request(app)
+      .post(`/blogs/${blog.id}/posts`)
+      .send({
+        title: "Post",
+        shortDescription: "Short",
+        content: "Content",
+      })
+      .expect(HttpStatus.Unauthorized);
+  });
+
+  it("should not create post with invalid data", async () => {
+    const blog = await createBlog();
+
+    await request(app)
+      .post(`/blogs/${blog.id}/posts`)
+      .set("Authorization", authHeader)
+      .send({
+        title: "",
+        shortDescription: "Short",
+        content: "Content",
+      })
+      .expect(HttpStatus.BadRequest);
+  });
+
+  it("should create post for blog and return it in list", async () => {
+    const blog = await createBlog();
+
+    const createRes = await request(app)
+      .post(`/blogs/${blog.id}/posts`)
+      .set("Authorization", authHeader)
+      .send({
+        title: "Post",
+        shortDescription: "Short",
+        content: "Content",
+      })
+      .expect(HttpStatus.Created);
+
+    expect(createRes.body).toEqual({
+      id: expect.any(String),
+      title: "Post",
+      shortDescription: "Short",
+      content: "Content",
+      blogId: blog.id,
+      blogName: blog.name,
+      createdAt: expect.any(String),
+    });
+
+    const listRes = await request(app)
+      .get(`/blogs/${blog.id}/posts`)
+      .expect(HttpStatus.Ok);
+
+    expect(listRes.body).toEqual([createRes.body]);
+  });
+
+  it("should return 404 when creating post for not existing blog", async () => {
+    await request(app)
+      .post(`/blogs/${nonExistingId}/posts`)
+      .set("Authorization", authHeader)
+      .send({
+        title: "Post",
+        shortDescription: "Short",
+        content: "Content",
+      })
       .expect(HttpStatus.NotFound);
   });
 });
