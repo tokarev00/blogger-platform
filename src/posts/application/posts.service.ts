@@ -3,14 +3,19 @@ import {PostInputDto} from '../dto/post.input-dto';
 import {PostsRepository} from '../repositories/posts.repository';
 import {BlogsRepository} from '../../blogs/repositories/blogs.repository';
 import {PostForBlogInputDto} from "../dto/post-for-blog.input-dto";
+import {PostsQuery} from '../dto/post.query';
+import {buildPaginator} from '../../core/utils/paginator';
+import {Paginator} from '../../core/types/pagination';
 
 export const PostsService = {
-    async findAll(): Promise<Post[]> {
-        return PostsRepository.findAll();
+    async findAll(query: PostsQuery): Promise<Paginator<Post>> {
+        const {items, totalCount} = await PostsRepository.findAll(query);
+        return buildPaginator(items, totalCount, query.pageNumber, query.pageSize);
     },
 
-    async findAllByBlogId(blogId: string): Promise<Post[]> {
-        return PostsRepository.findAllByBlogId(blogId);
+    async findAllByBlogId(blogId: string, query: PostsQuery): Promise<Paginator<Post>> {
+        const {items, totalCount} = await PostsRepository.findAllByBlogId(blogId, query);
+        return buildPaginator(items, totalCount, query.pageNumber, query.pageSize);
     },
 
     async findById(id: string): Promise<Post | null> {
