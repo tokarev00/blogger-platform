@@ -1,8 +1,8 @@
 import { Request, Response } from 'express';
-import {PostsRepository} from "../../repositories/posts.repository";
 import {HttpStatus} from "../../../core/types/http-statuses";
+import {PostsService} from "../../application/posts.service";
 
 export async function getPostListHandler(req: Request, res: Response) {
-    const posts = await PostsRepository.findAll();
+    const posts = await PostsService.findAll();
     return res.status(HttpStatus.Ok).send(posts);
 }
