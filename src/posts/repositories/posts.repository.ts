@@ -17,6 +17,11 @@ export const PostsRepository = {
         const posts = await postsCollection.find().toArray();
         return posts.map(mapPost);
     },
+
+    async findAllByBlogId(blogId: string): Promise<Post[]> {
+        const posts = await postsCollection.find({blogId}).toArray();
+        return posts.map(mapPost);
+    },
     async findById(id: string): Promise<Post | null> {
         const post = await postsCollection.findOne({_id: new ObjectId(id)});
         return post ? mapPost(post) : null;

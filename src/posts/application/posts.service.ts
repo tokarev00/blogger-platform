@@ -2,10 +2,15 @@ import {Post} from '../domain/post';
 import {PostInputDto} from '../dto/post.input-dto';
 import {PostsRepository} from '../repositories/posts.repository';
 import {BlogsRepository} from '../../blogs/repositories/blogs.repository';
+import {PostForBlogInputDto} from "../dto/post-for-blog.input-dto";
 
 export const PostsService = {
     async findAll(): Promise<Post[]> {
         return PostsRepository.findAll();
+    },
+
+    async findAllByBlogId(blogId: string): Promise<Post[]> {
+        return PostsRepository.findAllByBlogId(blogId);
     },
 
     async findById(id: string): Promise<Post | null> {
@@ -13,7 +18,14 @@ export const PostsService = {
     },
 
     async create(data: PostInputDto): Promise<Post | null> {
-        const blog = await BlogsRepository.findById(data.blogId);
+        return this.createForBlog(data.blogId, data);
+    },
+
+    async createForBlog(
+        blogId: string,
+        data: PostForBlogInputDto,
+    ): Promise<Post | null> {
+        const blog = await BlogsRepository.findById(blogId);
         if (!blog) {
             return null;
         }
@@ -21,7 +33,7 @@ export const PostsService = {
             title: data.title,
             shortDescription: data.shortDescription,
             content: data.content,
-            blogId: data.blogId,
+            blogId,
             blogName: blog.name,
         });
     },
