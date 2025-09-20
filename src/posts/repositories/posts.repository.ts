@@ -1,6 +1,7 @@
 import {ObjectId} from 'mongodb';
 import {Post} from '../domain/post';
 import {postsCollection, PostDb} from '../../db/mongo-db';
+import {PostsQuery} from '../dto/post.query';
 
 const mapPost = (post: PostDb): Post => ({
     id: post._id.toString(),
@@ -13,14 +14,38 @@ const mapPost = (post: PostDb): Post => ({
 });
 
 export const PostsRepository = {
-    async findAll(): Promise<Post[]> {
-        const posts = await postsCollection.find().toArray();
-        return posts.map(mapPost);
+    async findAll({sortBy, sortDirection, pageNumber, pageSize}: PostsQuery): Promise<{items: Post[]; totalCount: number}> {
+        const totalCount = await postsCollection.countDocuments();
+        const posts = await postsCollection
+            .find()
+            .sort({[sortBy]: sortDirection === 'asc' ? 1 : -1})
+            .skip((pageNumber - 1) * pageSize)
+            .limit(pageSize)
+            .toArray();
+
+        return {
+            items: posts.map(mapPost),
+            totalCount,
+        };
     },
 
-    async findAllByBlogId(blogId: string): Promise<Post[]> {
-        const posts = await postsCollection.find({blogId}).toArray();
-        return posts.map(mapPost);
+    async findAllByBlogId(
+        blogId: string,
+        {sortBy, sortDirection, pageNumber, pageSize}: PostsQuery,
+    ): Promise<{items: Post[]; totalCount: number}> {
+        const filter = {blogId};
+        const totalCount = await postsCollection.countDocuments(filter);
+        const posts = await postsCollection
+            .find(filter)
+            .sort({[sortBy]: sortDirection === 'asc' ? 1 : -1})
+            .skip((pageNumber - 1) * pageSize)
+            .limit(pageSize)
+            .toArray();
+
+        return {
+            items: posts.map(mapPost),
+            totalCount,
+        };
     },
     async findById(id: string): Promise<Post | null> {
         const post = await postsCollection.findOne({_id: new ObjectId(id)});

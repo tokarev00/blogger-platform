@@ -8,6 +8,14 @@ const app = setupApp(express());
 const authHeader = "Basic " + Buffer.from("admin:qwerty").toString("base64");
 const nonExistingId = "123456789012345678901234";
 
+beforeAll(async () => {
+  await runDb();
+});
+
+afterAll(async () => {
+  await closeDb();
+});
+
 const createBlog = async () => {
   const res = await request(app)
     .post("/blogs")
@@ -16,26 +24,63 @@ const createBlog = async () => {
       name: "Blog",
       description: "Desc",
       websiteUrl: "https://example.com",
-    });
+    })
+    .expect(HttpStatus.Created);
   return res.body;
 };
 
 describe("/posts", () => {
-  beforeAll(async () => {
-    await runDb();
-  });
-
-  afterAll(async () => {
-    await closeDb();
-  });
-
   beforeEach(async () => {
     await request(app).delete("/testing/all-data");
   });
 
-  it("should return an empty array", async () => {
+  it("should return an empty paginator", async () => {
     const res = await request(app).get("/posts").expect(HttpStatus.Ok);
-    expect(res.body).toEqual([]);
+    expect(res.body).toEqual({
+      pagesCount: 0,
+      page: 1,
+      pageSize: 10,
+      totalCount: 0,
+      items: [],
+    });
+  });
+
+  it("should paginate posts", async () => {
+    const blog = await createBlog();
+    for (let i = 1; i <= 7; i++) {
+      await request(app)
+        .post("/posts")
+        .set("Authorization", authHeader)
+        .send({
+          title: `Post ${i}`,
+          shortDescription: `Short ${i}`,
+          content: `Content ${i}`,
+          blogId: blog.id,
+        })
+        .expect(HttpStatus.Created);
+    }
+
+    const res = await request(app)
+      .get("/posts")
+      .query({
+        pageNumber: 2,
+        pageSize: 3,
+        sortBy: "title",
+        sortDirection: "asc",
+      })
+      .expect(HttpStatus.Ok);
+
+    expect(res.body).toEqual({
+      pagesCount: 3,
+      page: 2,
+      pageSize: 3,
+      totalCount: 7,
+      items: [
+        expect.objectContaining({ title: "Post 4" }),
+        expect.objectContaining({ title: "Post 5" }),
+        expect.objectContaining({ title: "Post 6" }),
+      ],
+    });
   });
 
   it("should not create post without auth", async () => {

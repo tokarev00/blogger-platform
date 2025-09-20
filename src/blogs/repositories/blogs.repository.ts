@@ -1,6 +1,7 @@
 import {ObjectId} from 'mongodb';
 import {Blog} from '../domain/blog';
 import {blogsCollection, BlogDb} from '../../db/mongo-db';
+import {BlogsQuery} from '../dto/blog.query';
 
 const mapBlog = (blog: BlogDb): Blog => ({
     id: blog._id.toString(),
@@ -12,9 +13,29 @@ const mapBlog = (blog: BlogDb): Blog => ({
 });
 
 export const BlogsRepository = {
-    async findAll(): Promise<Blog[]> {
-        const blogs = await blogsCollection.find().toArray();
-        return blogs.map(mapBlog);
+    async findAll({
+        searchNameTerm,
+        sortBy,
+        sortDirection,
+        pageNumber,
+        pageSize,
+    }: BlogsQuery): Promise<{items: Blog[]; totalCount: number}> {
+        const filter = searchNameTerm
+            ? {name: {$regex: searchNameTerm, $options: 'i'}}
+            : {};
+
+        const totalCount = await blogsCollection.countDocuments(filter);
+        const blogs = await blogsCollection
+            .find(filter)
+            .sort({[sortBy]: sortDirection === 'asc' ? 1 : -1})
+            .skip((pageNumber - 1) * pageSize)
+            .limit(pageSize)
+            .toArray();
+
+        return {
+            items: blogs.map(mapBlog),
+            totalCount,
+        };
     },
     async findById(id: string): Promise<Blog | null> {
         const blog = await blogsCollection.findOne({_id: new ObjectId(id)});

@@ -8,14 +8,24 @@ const app = setupApp(express());
 const authHeader = "Basic " + Buffer.from("admin:qwerty").toString("base64");
 const nonExistingId = "123456789012345678901234";
 
-const createBlog = async () => {
+beforeAll(async () => {
+  await runDb();
+});
+
+afterAll(async () => {
+  await closeDb();
+});
+
+const createBlog = async (
+  data?: Partial<{ name: string; description: string; websiteUrl: string }>,
+) => {
   const res = await request(app)
     .post("/blogs")
     .set("Authorization", authHeader)
     .send({
-      name: "Blog",
-      description: "Desc",
-      websiteUrl: "https://example.com",
+      name: data?.name ?? "Blog",
+      description: data?.description ?? "Desc",
+      websiteUrl: data?.websiteUrl ?? "https://example.com",
     })
     .expect(HttpStatus.Created);
 
@@ -23,21 +33,19 @@ const createBlog = async () => {
 };
 
 describe("/blogs", () => {
-  beforeAll(async () => {
-    await runDb();
-  });
-
-  afterAll(async () => {
-    await closeDb();
-  });
-
   beforeEach(async () => {
     await request(app).delete("/testing/all-data");
   });
 
-  it("should return an empty array", async () => {
+  it("should return an empty paginator", async () => {
     const res = await request(app).get("/blogs").expect(HttpStatus.Ok);
-    expect(res.body).toEqual([]);
+    expect(res.body).toEqual({
+      pagesCount: 0,
+      page: 1,
+      pageSize: 10,
+      totalCount: 0,
+      items: [],
+    });
   });
 
   it("should return 404 for not existing blog", async () => {
@@ -94,6 +102,53 @@ describe("/blogs", () => {
       .expect(HttpStatus.Ok);
 
     expect(getRes.body).toEqual(createRes.body);
+  });
+
+  it("should search blogs by name with pagination", async () => {
+    await createBlog({ name: "Ivan" });
+    await createBlog({ name: "DiVan" });
+    await createBlog({ name: "JanClod Vandam" });
+    await createBlog({ name: "Other" });
+
+    const firstPage = await request(app)
+      .get("/blogs")
+      .query({
+        searchNameTerm: "va",
+        pageSize: 2,
+        sortBy: "name",
+        sortDirection: "asc",
+      })
+      .expect(HttpStatus.Ok);
+
+    expect(firstPage.body).toEqual({
+      pagesCount: 2,
+      page: 1,
+      pageSize: 2,
+      totalCount: 3,
+      items: [
+        expect.objectContaining({ name: "DiVan" }),
+        expect.objectContaining({ name: "Ivan" }),
+      ],
+    });
+
+    const secondPage = await request(app)
+      .get("/blogs")
+      .query({
+        searchNameTerm: "va",
+        pageNumber: 2,
+        pageSize: 2,
+        sortBy: "name",
+        sortDirection: "asc",
+      })
+      .expect(HttpStatus.Ok);
+
+    expect(secondPage.body).toEqual({
+      pagesCount: 2,
+      page: 2,
+      pageSize: 2,
+      totalCount: 3,
+      items: [expect.objectContaining({ name: "JanClod Vandam" })],
+    });
   });
 
   it("should update blog", async () => {
@@ -154,14 +209,6 @@ describe("/blogs", () => {
 });
 
 describe("/blogs/:id/posts", () => {
-  beforeAll(async () => {
-    await runDb();
-  });
-
-  afterAll(async () => {
-    await closeDb();
-  });
-
   beforeEach(async () => {
     await request(app).delete("/testing/all-data");
   });
@@ -179,7 +226,13 @@ describe("/blogs/:id/posts", () => {
       .get(`/blogs/${blog.id}/posts`)
       .expect(HttpStatus.Ok);
 
-    expect(res.body).toEqual([]);
+    expect(res.body).toEqual({
+      pagesCount: 0,
+      page: 1,
+      pageSize: 10,
+      totalCount: 0,
+      items: [],
+    });
   });
 
   it("should not create post without auth", async () => {
@@ -236,7 +289,13 @@ describe("/blogs/:id/posts", () => {
       .get(`/blogs/${blog.id}/posts`)
       .expect(HttpStatus.Ok);
 
-    expect(listRes.body).toEqual([createRes.body]);
+    expect(listRes.body).toEqual({
+      pagesCount: 1,
+      page: 1,
+      pageSize: 10,
+      totalCount: 1,
+      items: [createRes.body],
+    });
   });
 
   it("should return 404 when creating post for not existing blog", async () => {
