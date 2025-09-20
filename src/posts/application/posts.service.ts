@@ -1,4 +1,4 @@
-import {Post} from '../types/post';
+import {Post} from '../domain/post';
 import {PostInputDto} from '../dto/post.input-dto';
 import {PostsRepository} from '../repositories/posts.repository';
 import {BlogsRepository} from '../../blogs/repositories/blogs.repository';

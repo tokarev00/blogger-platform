@@ -1,5 +1,5 @@
 import {ObjectId} from 'mongodb';
-import {Post} from '../types/post';
+import {Post} from '../domain/post';
 import {postsCollection, PostDb} from '../../db/mongo-db';
 
 const mapPost = (post: PostDb): Post => ({

@@ -1,6 +1,6 @@
 import {Request, Response} from "express";
 import {BlogInputDto} from "../../dto/blog.input-dto";
-import {Blog} from "../../types/blog";
+import {Blog} from "../../domain/blog";
 import {HttpStatus} from "../../../core/types/http-statuses";
 import {BlogsService} from "../../application/blogs.service";
 

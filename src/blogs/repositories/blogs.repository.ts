@@ -1,5 +1,5 @@
 import {ObjectId} from 'mongodb';
-import {Blog} from '../types/blog';
+import {Blog} from '../domain/blog';
 import {blogsCollection, BlogDb} from '../../db/mongo-db';
 
 const mapBlog = (blog: BlogDb): Blog => ({

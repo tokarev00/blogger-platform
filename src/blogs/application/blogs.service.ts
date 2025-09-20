@@ -1,4 +1,4 @@
-import {Blog} from '../types/blog';
+import {Blog} from '../domain/blog';
 import {BlogInputDto} from '../dto/blog.input-dto';
 import {BlogsRepository} from '../repositories/blogs.repository';
 

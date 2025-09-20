@@ -1,6 +1,6 @@
 import { Request, Response } from 'express';
 import {PostInputDto} from "../../dto/post.input-dto";
-import {Post} from "../../types/post";
+import {Post} from "../../domain/post";
 import {HttpStatus} from "../../../core/types/http-statuses";
 import {createErrorMessages} from "../../../core/middlewares/validation/input-validation-result.middleware";
 import {PostsService} from "../../application/posts.service";
