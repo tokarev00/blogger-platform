@@ -4,6 +4,8 @@
 
 # Node.js зависимости
 node_modules/
+!node_modules/bcrypt/
+!node_modules/bcrypt/**
 
 # macOS системные файлы
 .DS_Store
