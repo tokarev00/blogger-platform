@@ -1,6 +1,8 @@
 import {PaginationQuery} from "../../core/types/pagination";
 
-export type UsersQuery = PaginationQuery<'createdAt'> & {
+export type UserSortBy = 'createdAt' | 'login' | 'email';
+
+export type UsersQuery = PaginationQuery<UserSortBy> & {
     searchLoginTerm?: string;
     searchEmailTerm?: string;
 };
