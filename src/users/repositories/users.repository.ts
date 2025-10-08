@@ -83,10 +83,17 @@ export const UsersRepository = {
     },
 
     async findAccountByLoginOrEmail(loginOrEmail: string): Promise<UserAccount | null> {
-        const user = await usersCollection.findOne({
-            $or: [{login: loginOrEmail}, {email: loginOrEmail}],
-        });
+        const userByLogin = await usersCollection.findOne({login: loginOrEmail});
+        if (userByLogin) {
+            return mapUserAccount(userByLogin);
+        }
 
-        return user ? mapUserAccount(user) : null;
+        const userByEmail = await usersCollection.findOne({email: loginOrEmail});
+        return userByEmail ? mapUserAccount(userByEmail) : null;
+    },
+
+    async findById(id: string): Promise<User | null> {
+        const user = await usersCollection.findOne({_id: new ObjectId(id)});
+        return user ? mapUser(user) : null;
     },
 };
