@@ -32,6 +32,15 @@ export type UserDb = {
     createdAt: string;
 };
 
+export type CommentDb = {
+    _id: ObjectId;
+    postId: string;
+    content: string;
+    userId: string;
+    userLogin: string;
+    createdAt: string;
+};
+
 type SortSpecification = Record<string, 1 | -1>;
 
 type CursorLike<T> = {
@@ -203,12 +212,14 @@ if (!mongoUrl) {
 export let blogsCollection: CollectionLike<BlogDb>;
 export let postsCollection: CollectionLike<PostDb>;
 export let usersCollection: CollectionLike<UserDb>;
+export let commentsCollection: CollectionLike<CommentDb>;
 
 export async function runDb() {
     if (useInMemoryStorage) {
         blogsCollection = new InMemoryCollection<BlogDb>();
         postsCollection = new InMemoryCollection<PostDb>();
         usersCollection = new InMemoryCollection<UserDb>();
+        commentsCollection = new InMemoryCollection<CommentDb>();
         return;
     }
 
@@ -221,6 +232,7 @@ export async function runDb() {
     blogsCollection = db.collection<BlogDb>('blogs');
     postsCollection = db.collection<PostDb>('posts');
     usersCollection = db.collection<UserDb>('users');
+    commentsCollection = db.collection<CommentDb>('comments');
 }
 
 export async function closeDb() {
@@ -228,6 +240,7 @@ export async function closeDb() {
         blogsCollection = new InMemoryCollection<BlogDb>();
         postsCollection = new InMemoryCollection<PostDb>();
         usersCollection = new InMemoryCollection<UserDb>();
+        commentsCollection = new InMemoryCollection<CommentDb>();
         return;
     }
 

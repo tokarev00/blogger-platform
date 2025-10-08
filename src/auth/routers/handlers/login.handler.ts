@@ -7,14 +7,16 @@ export async function loginHandler(
     req: Request<{}, {}, LoginInputDto>,
     res: Response,
 ) {
-    const isValid = await AuthService.verifyCredentials(
+    const user = await AuthService.validateCredentials(
         req.body.loginOrEmail,
         req.body.password,
     );
 
-    if (!isValid) {
+    if (!user) {
         return res.sendStatus(HttpStatus.Unauthorized);
     }
 
-    return res.sendStatus(HttpStatus.NoContent);
+    const accessToken = AuthService.createAccessToken(user.id);
+
+    return res.status(HttpStatus.Ok).send({accessToken});
 }
