@@ -30,6 +30,11 @@ export type UserDb = {
     email: string;
     passwordHash: string;
     createdAt: string;
+    emailConfirmation: {
+        isConfirmed: boolean;
+        confirmationCode: string | null;
+        expirationDate: string | null;
+    };
 };
 
 export type CommentDb = {
@@ -151,7 +156,15 @@ function matchesFilter<T extends {_id: ObjectId}>(doc: T, filter: any): boolean 
     if (!filter || Object.keys(filter).length === 0) {
         return true;
     }
-    return Object.entries(filter).every(([key, value]) => matchCondition((doc as any)[key], value));
+
+    return Object.entries(filter).every(([key, value]) => {
+        if (key === '$or' && Array.isArray(value)) {
+            return value.some((nested) => matchesFilter(doc, nested));
+        }
+
+        const docValue = getValueByPath(doc, key);
+        return matchCondition(docValue, value);
+    });
 }
 
 function matchCondition(docValue: any, condition: any): boolean {
@@ -164,7 +177,23 @@ function matchCondition(docValue: any, condition: any): boolean {
     if (condition instanceof ObjectId) {
         return docValue instanceof ObjectId && docValue.equals(condition);
     }
+    if (condition && typeof condition === 'object' && !Array.isArray(condition)) {
+        return matchesFilter(docValue ?? {}, condition);
+    }
     return docValue === condition;
+}
+
+function getValueByPath<T>(doc: T, path: string): any {
+    if (!path.includes('.')) {
+        return (doc as any)[path];
+    }
+
+    return path.split('.').reduce((acc: any, key: string) => {
+        if (acc === null || acc === undefined) {
+            return undefined;
+        }
+        return acc[key];
+    }, doc as any);
 }
 
 function compareDocuments<T>(a: T, b: T, sortParams: Array<[string, 1 | -1]>): number {

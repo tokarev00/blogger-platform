@@ -41,6 +41,11 @@ export const UsersService = {
             login: data.login,
             email: data.email,
             passwordHash,
+            emailConfirmation: {
+                isConfirmed: true,
+                confirmationCode: null,
+                expirationDate: null,
+            },
         });
 
         return {status: 'success', user};
