@@ -1,6 +1,6 @@
 import {Filter, ObjectId} from "mongodb";
 import {usersCollection, UserDb} from "../../db/mongo-db";
-import {User, UserAccount} from "../domain/user";
+import {EmailConfirmation, User, UserAccount} from "../domain/user";
 import {UsersQuery} from "../dto/user.query";
 
 const mapUser = (user: UserDb): User => ({
@@ -13,6 +13,7 @@ const mapUser = (user: UserDb): User => ({
 const mapUserAccount = (user: UserDb): UserAccount => ({
     ...mapUser(user),
     passwordHash: user.passwordHash,
+    emailConfirmation: {...user.emailConfirmation},
 });
 
 export const UsersRepository = {
@@ -54,13 +55,19 @@ export const UsersRepository = {
         };
     },
 
-    async create(data: {login: string; email: string; passwordHash: string}): Promise<User> {
+    async create(data: {
+        login: string;
+        email: string;
+        passwordHash: string;
+        emailConfirmation: EmailConfirmation;
+    }): Promise<User> {
         const newUser: UserDb = {
             _id: new ObjectId(),
             login: data.login,
             email: data.email,
             passwordHash: data.passwordHash,
             createdAt: new Date().toISOString(),
+            emailConfirmation: data.emailConfirmation,
         };
 
         await usersCollection.insertOne(newUser);
@@ -95,5 +102,41 @@ export const UsersRepository = {
     async findById(id: string): Promise<User | null> {
         const user = await usersCollection.findOne({_id: new ObjectId(id)});
         return user ? mapUser(user) : null;
+    },
+
+    async findAccountByConfirmationCode(code: string): Promise<UserAccount | null> {
+        const user = await usersCollection.findOne({"emailConfirmation.confirmationCode": code});
+        return user ? mapUserAccount(user) : null;
+    },
+
+    async findAccountByEmail(email: string): Promise<UserAccount | null> {
+        const user = await usersCollection.findOne({email});
+        return user ? mapUserAccount(user) : null;
+    },
+
+    async confirmEmail(userId: string): Promise<boolean> {
+        const result = await usersCollection.updateOne(
+            {_id: new ObjectId(userId)},
+            {
+                $set: {
+                    emailConfirmation: {
+                        isConfirmed: true,
+                        confirmationCode: null,
+                        expirationDate: null,
+                    },
+                },
+            },
+        );
+
+        return result.matchedCount === 1;
+    },
+
+    async updateEmailConfirmation(userId: string, confirmation: EmailConfirmation): Promise<boolean> {
+        const result = await usersCollection.updateOne(
+            {_id: new ObjectId(userId)},
+            {$set: {emailConfirmation: confirmation}},
+        );
+
+        return result.matchedCount === 1;
     },
 };
