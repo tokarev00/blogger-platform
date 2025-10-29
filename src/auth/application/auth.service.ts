@@ -4,8 +4,11 @@ import {UsersRepository} from "../../users/repositories/users.repository";
 import {JwtService} from "./jwt.service";
 import {EmailConfirmation, User, UserAccount} from "../../users/domain/user";
 import {EmailSender} from "./email.sender";
+import {FieldError} from "../../core/types/field-error";
 
 const CONFIRMATION_CODE_TTL_HOURS = 24;
+
+const SALT_ROUNDS = 10;
 
 const buildConfirmationData = (overrides?: Partial<EmailConfirmation>): EmailConfirmation => ({
     isConfirmed: overrides?.isConfirmed ?? false,
@@ -13,6 +16,10 @@ const buildConfirmationData = (overrides?: Partial<EmailConfirmation>): EmailCon
     expirationDate:
         overrides?.expirationDate ?? new Date(Date.now() + CONFIRMATION_CODE_TTL_HOURS * 60 * 60 * 1000).toISOString(),
 });
+
+type RegistrationResult =
+    | {status: "success"}
+    | {status: "error"; error: FieldError};
 
 export const AuthService = {
     async validateCredentials(loginOrEmail: string, password: string): Promise<UserAccount | null> {
@@ -91,4 +98,52 @@ export const AuthService = {
 
         return 'success';
     },
+
+    async registerUser(
+        data: {login: string; password: string; email: string},
+        baseUrl: string,
+    ): Promise<RegistrationResult> {
+        const isLoginTaken = await UsersRepository.isLoginTaken(data.login);
+        if (isLoginTaken) {
+            return {
+                status: 'error',
+                error: {field: 'login', message: 'login should be unique'},
+            };
+        }
+
+        const isEmailTaken = await UsersRepository.isEmailTaken(data.email);
+        if (isEmailTaken) {
+            return {
+                status: 'error',
+                error: {field: 'email', message: 'email should be unique'},
+            };
+        }
+
+        const passwordHash = await bcrypt.hash(data.password, SALT_ROUNDS);
+        const confirmation = buildConfirmationData();
+
+        await UsersRepository.create({
+            login: data.login,
+            email: data.email,
+            passwordHash,
+            emailConfirmation: confirmation,
+        });
+
+        const confirmationCode = confirmation.confirmationCode;
+        if (!confirmationCode) {
+            throw new Error('Failed to generate confirmation code');
+        }
+
+        const confirmationUrl = new URL('/confirm-email', baseUrl);
+        confirmationUrl.searchParams.set('code', confirmationCode);
+
+        await EmailSender.sendRegistrationEmail({
+            email: data.email,
+            confirmationUrl: confirmationUrl.toString(),
+        });
+
+        return {status: 'success'};
+    },
 };
+
+export type {RegistrationResult};

@@ -8,6 +8,8 @@ import {registrationConfirmationValidation} from "../validation/registration-con
 import {registrationConfirmationHandler} from "./handlers/registration-confirmation.handler";
 import {registrationEmailResendingValidation} from "../validation/registration-email-resending-validation.middleware";
 import {registrationEmailResendingHandler} from "./handlers/registration-email-resending.handler";
+import {registrationValidation} from "../validation/registration-validation.middleware";
+import {registrationHandler} from "./handlers/registration.handler";
 
 export const authRouter = Router();
 
@@ -16,6 +18,13 @@ authRouter.post(
     loginValidation,
     inputValidationResultMiddleware,
     loginHandler,
+);
+
+authRouter.post(
+    '/registration',
+    registrationValidation,
+    inputValidationResultMiddleware,
+    registrationHandler,
 );
 
 authRouter.post(
