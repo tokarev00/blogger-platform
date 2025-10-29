@@ -25,6 +25,77 @@ const createUnconfirmedUser = async (overrides: Partial<UserDb> = {}): Promise<U
     return user;
 };
 
+describe("registration", () => {
+    beforeAll(async () => {
+        await runDb();
+    });
+
+    afterAll(async () => {
+        await closeDb();
+    });
+
+    beforeEach(async () => {
+        await request(app).delete("/testing/all-data");
+    });
+
+    it("should create unconfirmed user and send 204", async () => {
+        const login = "john_d";
+        const email = "john_d@example.com";
+        const password = "password";
+
+        await request(app)
+            .post("/auth/registration")
+            .send({login, email, password})
+            .expect(HttpStatus.NoContent);
+
+        const user = await usersCollection.findOne({login});
+        expect(user).not.toBeNull();
+        expect(user?.email).toBe(email);
+        expect(user?.passwordHash).not.toBe(password);
+        expect(user?.emailConfirmation.isConfirmed).toBe(false);
+        expect(user?.emailConfirmation.confirmationCode).not.toBeNull();
+        expect(user?.emailConfirmation.expirationDate).not.toBeNull();
+    });
+
+    it("should return 400 when login is already taken", async () => {
+        const login = "existing";
+        await createUnconfirmedUser({login});
+
+        const res = await request(app)
+            .post("/auth/registration")
+            .send({login, email: "new@example.com", password: "password"})
+            .expect(HttpStatus.BadRequest);
+
+        expect(res.body).toEqual({
+            errorsMessages: [
+                {
+                    field: "login",
+                    message: "login should be unique",
+                },
+            ],
+        });
+    });
+
+    it("should return 400 when email is already taken", async () => {
+        const email = "taken@example.com";
+        await createUnconfirmedUser({email});
+
+        const res = await request(app)
+            .post("/auth/registration")
+            .send({login: "newlogin", email, password: "password"})
+            .expect(HttpStatus.BadRequest);
+
+        expect(res.body).toEqual({
+            errorsMessages: [
+                {
+                    field: "email",
+                    message: "email should be unique",
+                },
+            ],
+        });
+    });
+});
+
 describe("registration confirmation", () => {
     beforeAll(async () => {
         await runDb();
