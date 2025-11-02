@@ -31,6 +31,6 @@ export const registrationValidation = [
         .withMessage('email must be a string')
         .bail()
         .trim()
-        .matches(/^[\w-\.]+@([\w-]+\.)+[\w-]{2,4}$/)
+        .isEmail()
         .withMessage('email has invalid format'),
 ];
