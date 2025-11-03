@@ -10,6 +10,8 @@ import {registrationEmailResendingValidation} from "../validation/registration-e
 import {registrationEmailResendingHandler} from "./handlers/registration-email-resending.handler";
 import {registrationValidation} from "../validation/registration-validation.middleware";
 import {registrationHandler} from "./handlers/registration.handler";
+import {refreshTokenHandler} from "./handlers/refresh-token.handler";
+import {logoutHandler} from "./handlers/logout.handler";
 
 export const authRouter = Router();
 
@@ -18,6 +20,16 @@ authRouter.post(
     loginValidation,
     inputValidationResultMiddleware,
     loginHandler,
+);
+
+authRouter.post(
+    '/refresh-token',
+    refreshTokenHandler,
+);
+
+authRouter.post(
+    '/logout',
+    logoutHandler,
 );
 
 authRouter.post(

@@ -2,6 +2,7 @@ import {Request, Response} from "express";
 import {HttpStatus} from "../../../core/types/http-statuses";
 import {LoginInputDto} from "../../dto/login.input-dto";
 import {AuthService} from "../../application/auth.service";
+import {setRefreshTokenCookie} from "../helpers/refresh-token-cookie";
 
 export async function loginHandler(
     req: Request<{}, {}, LoginInputDto>,
@@ -16,7 +17,9 @@ export async function loginHandler(
         return res.sendStatus(HttpStatus.Unauthorized);
     }
 
-    const accessToken = AuthService.createAccessToken(user.id);
+    const tokens = await AuthService.createTokenPair(user.id);
 
-    return res.status(HttpStatus.Ok).send({accessToken});
+    setRefreshTokenCookie(res, tokens.refreshToken);
+
+    return res.status(HttpStatus.Ok).send({accessToken: tokens.accessToken});
 }
