@@ -1,10 +1,13 @@
 import bcrypt from "bcrypt";
 import {randomUUID} from "crypto";
 import {UsersRepository} from "../../users/repositories/users.repository";
-import {JwtService} from "./jwt.service";
+import {JwtService, REFRESH_TOKEN_TTL_SECONDS} from "./jwt.service";
 import {EmailConfirmation, User, UserAccount} from "../../users/domain/user";
 import {EmailSender} from "./email.sender";
 import {FieldError} from "../../core/types/field-error";
+import {RefreshTokensRepository} from "../repositories/refresh-tokens.repository";
+
+const REFRESH_TOKEN_TTL_MS = REFRESH_TOKEN_TTL_SECONDS * 1000;
 
 const CONFIRMATION_CODE_TTL_HOURS = 24;
 
@@ -40,8 +43,62 @@ export const AuthService = {
         return user;
     },
 
-    createAccessToken(userId: string): string {
-        return JwtService.createAccessToken(userId);
+    async createTokenPair(userId: string): Promise<{accessToken: string; refreshToken: string}> {
+        const refreshTokenId = randomUUID();
+        const accessToken = JwtService.createAccessToken(userId);
+        const refreshToken = JwtService.createRefreshToken(userId, refreshTokenId);
+
+        const expiresAt = new Date(Date.now() + REFRESH_TOKEN_TTL_MS).toISOString();
+        await RefreshTokensRepository.create({
+            userId,
+            tokenId: refreshTokenId,
+            expiresAt,
+        });
+
+        return {accessToken, refreshToken};
+    },
+
+    async refreshTokens(refreshToken: string): Promise<{accessToken: string; refreshToken: string} | null> {
+        const payload = JwtService.verifyRefreshToken(refreshToken);
+        if (!payload) {
+            return null;
+        }
+
+        const existingToken = await RefreshTokensRepository.findByTokenId(payload.tokenId);
+        if (!existingToken || existingToken.isRevoked) {
+            return null;
+        }
+
+        const isExpired = new Date(existingToken.expiresAt) < new Date();
+        if (isExpired) {
+            await RefreshTokensRepository.revoke(existingToken.tokenId);
+            return null;
+        }
+
+        await RefreshTokensRepository.revoke(existingToken.tokenId);
+
+        return AuthService.createTokenPair(payload.userId);
+    },
+
+    async logout(refreshToken: string): Promise<boolean> {
+        const payload = JwtService.verifyRefreshToken(refreshToken);
+        if (!payload) {
+            return false;
+        }
+
+        const existingToken = await RefreshTokensRepository.findByTokenId(payload.tokenId);
+        if (!existingToken || existingToken.isRevoked) {
+            return false;
+        }
+
+        const isExpired = new Date(existingToken.expiresAt) < new Date();
+        if (isExpired) {
+            await RefreshTokensRepository.revoke(existingToken.tokenId);
+            return false;
+        }
+
+        await RefreshTokensRepository.revoke(existingToken.tokenId);
+        return true;
     },
 
     async getUserById(userId: string): Promise<User | null> {

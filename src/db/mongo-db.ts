@@ -46,6 +46,15 @@ export type CommentDb = {
     createdAt: string;
 };
 
+export type RefreshTokenDb = {
+    _id: ObjectId;
+    tokenId: string;
+    userId: string;
+    createdAt: string;
+    expiresAt: string;
+    isRevoked: boolean;
+};
+
 type SortSpecification = Record<string, 1 | -1>;
 
 type CursorLike<T> = {
@@ -242,6 +251,7 @@ export let blogsCollection: CollectionLike<BlogDb>;
 export let postsCollection: CollectionLike<PostDb>;
 export let usersCollection: CollectionLike<UserDb>;
 export let commentsCollection: CollectionLike<CommentDb>;
+export let refreshTokensCollection: CollectionLike<RefreshTokenDb>;
 
 export async function runDb() {
     if (useInMemoryStorage) {
@@ -249,6 +259,7 @@ export async function runDb() {
         postsCollection = new InMemoryCollection<PostDb>();
         usersCollection = new InMemoryCollection<UserDb>();
         commentsCollection = new InMemoryCollection<CommentDb>();
+        refreshTokensCollection = new InMemoryCollection<RefreshTokenDb>();
         return;
     }
 
@@ -262,6 +273,7 @@ export async function runDb() {
     postsCollection = db.collection<PostDb>('posts');
     usersCollection = db.collection<UserDb>('users');
     commentsCollection = db.collection<CommentDb>('comments');
+    refreshTokensCollection = db.collection<RefreshTokenDb>('refreshTokens');
 }
 
 export async function closeDb() {
@@ -270,6 +282,7 @@ export async function closeDb() {
         postsCollection = new InMemoryCollection<PostDb>();
         usersCollection = new InMemoryCollection<UserDb>();
         commentsCollection = new InMemoryCollection<CommentDb>();
+        refreshTokensCollection = new InMemoryCollection<RefreshTokenDb>();
         return;
     }
 
