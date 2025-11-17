@@ -4,19 +4,26 @@ import {HttpStatus} from "../../core/types/http-statuses";
 const WINDOW_MS = 10_000;
 const MAX_ATTEMPTS = 5;
 
-const attemptsByIp = new Map<string, number[]>();
+type RateLimitKey = string;
+
+const attemptsByKey = new Map<RateLimitKey, number[]>();
 
 const getClientIp = (req: Request): string => {
     return req.ip || req.socket.remoteAddress || 'unknown';
 };
 
+const getRateLimitKey = (req: Request): RateLimitKey => {
+    const endpoint = req.originalUrl || req.url || 'unknown-endpoint';
+    return `${getClientIp(req)}:${req.method}:${endpoint}`;
+};
+
 export const authRateLimitMiddleware = (req: Request, res: Response, next: NextFunction) => {
-    const ip = getClientIp(req);
+    const key = getRateLimitKey(req);
     const now = Date.now();
-    const attempts = attemptsByIp.get(ip) ?? [];
+    const attempts = attemptsByKey.get(key) ?? [];
     const recentAttempts = attempts.filter((timestamp) => now - timestamp <= WINDOW_MS);
     recentAttempts.push(now);
-    attemptsByIp.set(ip, recentAttempts);
+    attemptsByKey.set(key, recentAttempts);
 
     if (recentAttempts.length > MAX_ATTEMPTS) {
         return res.sendStatus(HttpStatus.TooManyRequests);
@@ -26,5 +33,5 @@ export const authRateLimitMiddleware = (req: Request, res: Response, next: NextF
 };
 
 export const resetAuthRateLimiter = () => {
-    attemptsByIp.clear();
+    attemptsByKey.clear();
 };

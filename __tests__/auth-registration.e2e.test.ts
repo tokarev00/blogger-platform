@@ -249,3 +249,56 @@ describe("registration email resending", () => {
         });
     });
 });
+
+describe("auth rate limit", () => {
+    beforeAll(async () => {
+        await runDb();
+    });
+
+    afterAll(async () => {
+        await closeDb();
+    });
+
+    beforeEach(async () => {
+        await request(app).delete("/testing/all-data");
+    });
+
+    const buildRegistrationPayload = (index: number) => ({
+        login: `user-${index}`,
+        email: `user-${index}@example.com`,
+        password: "password",
+    });
+
+    it("should return 429 after more than 5 attempts to the same endpoint", async () => {
+        for (let i = 0; i < 5; i++) {
+            await request(app)
+                .post("/auth/registration")
+                .send(buildRegistrationPayload(i))
+                .expect(HttpStatus.NoContent);
+        }
+
+        await request(app)
+            .post("/auth/registration")
+            .send(buildRegistrationPayload(5))
+            .expect(HttpStatus.TooManyRequests);
+    });
+
+    it("should track attempts separately for each endpoint", async () => {
+        for (let i = 0; i < 5; i++) {
+            await request(app)
+                .post("/auth/registration")
+                .send(buildRegistrationPayload(i))
+                .expect(HttpStatus.NoContent);
+        }
+
+        await request(app)
+            .post("/auth/registration")
+            .send(buildRegistrationPayload(5))
+            .expect(HttpStatus.TooManyRequests);
+
+        await request(app)
+            .post("/auth/login")
+            .send({loginOrEmail: "john@example.com", password: "wrong-password"})
+            .expect(HttpStatus.Unauthorized);
+    });
+});
