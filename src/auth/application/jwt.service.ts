@@ -34,6 +34,7 @@ type AccessTokenPayload = {
 type RefreshTokenPayload = {
     userId: string;
     tokenId: string;
+    deviceId: string;
 };
 
 function createToken(payload: Record<string, unknown>, ttlSeconds: number): string {
@@ -95,16 +96,21 @@ export const JwtService = {
         return {userId: payload.userId};
     },
 
-    createRefreshToken(userId: string, tokenId: string): string {
-        return createToken({userId, tokenId}, REFRESH_TOKEN_TTL_SECONDS);
+    createRefreshToken(userId: string, deviceId: string, tokenId: string): string {
+        return createToken({userId, deviceId, tokenId}, REFRESH_TOKEN_TTL_SECONDS);
     },
 
     verifyRefreshToken(token: string): RefreshTokenPayload | null {
         const payload = verifyToken(token);
-        if (!payload || typeof payload.userId !== 'string' || typeof payload.tokenId !== 'string') {
+        if (
+            !payload ||
+            typeof payload.userId !== 'string' ||
+            typeof payload.tokenId !== 'string' ||
+            typeof payload.deviceId !== 'string'
+        ) {
             return null;
         }
-        return {userId: payload.userId, tokenId: payload.tokenId};
+        return {userId: payload.userId, tokenId: payload.tokenId, deviceId: payload.deviceId};
     },
 };
 

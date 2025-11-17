@@ -50,6 +50,10 @@ export type RefreshTokenDb = {
     _id: ObjectId;
     tokenId: string;
     userId: string;
+    deviceId: string;
+    ip: string;
+    title: string;
+    lastActiveDate: string;
     createdAt: string;
     expiresAt: string;
     isRevoked: boolean;

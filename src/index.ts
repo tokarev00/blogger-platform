@@ -3,6 +3,7 @@ import {setupApp} from "./setup-app";
 import {runDb} from "./db/mongo-db";
 
 const app = express();
+app.set('trust proxy', true);
 setupApp(app);
 
 const PORT = process.env.PORT || 3001;
