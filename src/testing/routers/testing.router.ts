@@ -1,5 +1,5 @@
-import { Router, Request, Response } from 'express';
-import { HttpStatus } from '../../core/types/http-statuses';
+import {Router, Request, Response} from 'express';
+import {HttpStatus} from '../../core/types/http-statuses';
 import {
     blogsCollection,
     postsCollection,
@@ -7,6 +7,7 @@ import {
     commentsCollection,
     refreshTokensCollection,
 } from '../../db/mongo-db';
+import {resetAuthRateLimiter} from "../../auth/middlewares/auth-rate-limit.middleware";
 
 export const testingRouter = Router({});
 
@@ -16,5 +17,6 @@ testingRouter.delete('/all-data', async (req: Request, res: Response) => {
     await usersCollection.deleteMany({});
     await commentsCollection.deleteMany({});
     await refreshTokensCollection.deleteMany({});
-    return  res.sendStatus(HttpStatus.NoContent);
+    resetAuthRateLimiter();
+    return res.sendStatus(HttpStatus.NoContent);
 });

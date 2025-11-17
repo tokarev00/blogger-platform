@@ -5,13 +5,39 @@ import {JwtService, REFRESH_TOKEN_TTL_SECONDS} from "./jwt.service";
 import {EmailConfirmation, User, UserAccount} from "../../users/domain/user";
 import {EmailSender} from "./email.sender";
 import {FieldError} from "../../core/types/field-error";
-import {RefreshTokensRepository} from "../repositories/refresh-tokens.repository";
+import {RefreshTokensRepository, RefreshTokenModel} from "../repositories/refresh-tokens.repository";
 
 const REFRESH_TOKEN_TTL_MS = REFRESH_TOKEN_TTL_SECONDS * 1000;
 
 const CONFIRMATION_CODE_TTL_HOURS = 24;
 
 const SALT_ROUNDS = 10;
+
+const buildRefreshTokenExpiration = () => new Date(Date.now() + REFRESH_TOKEN_TTL_MS).toISOString();
+
+async function findActiveSessionByRefreshToken(refreshToken: string): Promise<RefreshTokenModel | null> {
+    const payload = JwtService.verifyRefreshToken(refreshToken);
+    if (!payload) {
+        return null;
+    }
+
+    const existingToken = await RefreshTokensRepository.findByTokenId(payload.tokenId);
+    if (!existingToken || existingToken.isRevoked) {
+        return null;
+    }
+
+    const isExpired = new Date(existingToken.expiresAt) < new Date();
+    if (isExpired) {
+        await RefreshTokensRepository.revoke(existingToken.tokenId);
+        return null;
+    }
+
+    if (existingToken.userId !== payload.userId || existingToken.deviceId !== payload.deviceId) {
+        return null;
+    }
+
+    return existingToken;
+}
 
 const buildConfirmationData = (overrides?: Partial<EmailConfirmation>): EmailConfirmation => ({
     isConfirmed: overrides?.isConfirmed ?? false,
@@ -43,15 +69,24 @@ export const AuthService = {
         return user;
     },
 
-    async createTokenPair(userId: string): Promise<{accessToken: string; refreshToken: string}> {
+    async createSession(
+        userId: string,
+        data: {ip: string; title: string},
+    ): Promise<{accessToken: string; refreshToken: string}> {
+        const deviceId = randomUUID();
         const refreshTokenId = randomUUID();
         const accessToken = JwtService.createAccessToken(userId);
-        const refreshToken = JwtService.createRefreshToken(userId, refreshTokenId);
+        const refreshToken = JwtService.createRefreshToken(userId, deviceId, refreshTokenId);
 
-        const expiresAt = new Date(Date.now() + REFRESH_TOKEN_TTL_MS).toISOString();
+        const lastActiveDate = new Date().toISOString();
+        const expiresAt = buildRefreshTokenExpiration();
         await RefreshTokensRepository.create({
             userId,
             tokenId: refreshTokenId,
+            deviceId,
+            ip: data.ip,
+            title: data.title,
+            lastActiveDate,
             expiresAt,
         });
 
@@ -59,46 +94,46 @@ export const AuthService = {
     },
 
     async refreshTokens(refreshToken: string): Promise<{accessToken: string; refreshToken: string} | null> {
-        const payload = JwtService.verifyRefreshToken(refreshToken);
-        if (!payload) {
+        const existingSession = await findActiveSessionByRefreshToken(refreshToken);
+        if (!existingSession) {
             return null;
         }
 
-        const existingToken = await RefreshTokensRepository.findByTokenId(payload.tokenId);
-        if (!existingToken || existingToken.isRevoked) {
+        const newTokenId = randomUUID();
+        const lastActiveDate = new Date().toISOString();
+        const expiresAt = buildRefreshTokenExpiration();
+        const isUpdated = await RefreshTokensRepository.updateSessionByDeviceId(existingSession.deviceId, {
+            tokenId: newTokenId,
+            lastActiveDate,
+            expiresAt,
+        });
+
+        if (!isUpdated) {
             return null;
         }
 
-        const isExpired = new Date(existingToken.expiresAt) < new Date();
-        if (isExpired) {
-            await RefreshTokensRepository.revoke(existingToken.tokenId);
-            return null;
-        }
+        const accessToken = JwtService.createAccessToken(existingSession.userId);
+        const newRefreshToken = JwtService.createRefreshToken(
+            existingSession.userId,
+            existingSession.deviceId,
+            newTokenId,
+        );
 
-        await RefreshTokensRepository.revoke(existingToken.tokenId);
-
-        return AuthService.createTokenPair(payload.userId);
+        return {accessToken, refreshToken: newRefreshToken};
     },
 
     async logout(refreshToken: string): Promise<boolean> {
-        const payload = JwtService.verifyRefreshToken(refreshToken);
-        if (!payload) {
+        const existingSession = await findActiveSessionByRefreshToken(refreshToken);
+        if (!existingSession) {
             return false;
         }
 
-        const existingToken = await RefreshTokensRepository.findByTokenId(payload.tokenId);
-        if (!existingToken || existingToken.isRevoked) {
-            return false;
-        }
-
-        const isExpired = new Date(existingToken.expiresAt) < new Date();
-        if (isExpired) {
-            await RefreshTokensRepository.revoke(existingToken.tokenId);
-            return false;
-        }
-
-        await RefreshTokensRepository.revoke(existingToken.tokenId);
+        await RefreshTokensRepository.deleteByDeviceId(existingSession.deviceId);
         return true;
+    },
+
+    async getSessionByRefreshToken(refreshToken: string): Promise<RefreshTokenModel | null> {
+        return findActiveSessionByRefreshToken(refreshToken);
     },
 
     async getUserById(userId: string): Promise<User | null> {

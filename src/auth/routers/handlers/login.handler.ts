@@ -3,6 +3,7 @@ import {HttpStatus} from "../../../core/types/http-statuses";
 import {LoginInputDto} from "../../dto/login.input-dto";
 import {AuthService} from "../../application/auth.service";
 import {setRefreshTokenCookie} from "../helpers/refresh-token-cookie";
+import {buildDeviceTitle} from "../../../core/utils/device-title";
 
 export async function loginHandler(
     req: Request<{}, {}, LoginInputDto>,
@@ -17,7 +18,12 @@ export async function loginHandler(
         return res.sendStatus(HttpStatus.Unauthorized);
     }
 
-    const tokens = await AuthService.createTokenPair(user.id);
+    const clientIp = req.ip || req.socket.remoteAddress || 'unknown';
+    const userAgentHeader = req.headers['user-agent'];
+    const userAgent = Array.isArray(userAgentHeader) ? userAgentHeader[0] : userAgentHeader;
+    const title = buildDeviceTitle(userAgent);
+
+    const tokens = await AuthService.createSession(user.id, {ip: clientIp, title});
 
     setRefreshTokenCookie(res, tokens.refreshToken);
 
