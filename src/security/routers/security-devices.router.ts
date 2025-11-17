@@ -1,11 +1,12 @@
-import {Router, Request, Response} from "express";
+import {Router, Response} from "express";
 import {HttpStatus} from "../../core/types/http-statuses";
 import {refreshTokenGuardMiddleware} from "../../auth/middlewares/refresh-token.guard-middleware";
 import {SecurityDevicesService} from "../services/security-devices.service";
+import {RequestWithSession} from "../../types/request-with-session";
 
 export const securityDevicesRouter = Router();
 
-securityDevicesRouter.get('/', refreshTokenGuardMiddleware, async (req: Request, res: Response) => {
+securityDevicesRouter.get('/', refreshTokenGuardMiddleware, async (req: RequestWithSession, res: Response) => {
     const currentUserId = req.currentUserId;
     if (!currentUserId) {
         return res.sendStatus(HttpStatus.Unauthorized);
@@ -15,7 +16,7 @@ securityDevicesRouter.get('/', refreshTokenGuardMiddleware, async (req: Request,
     return res.status(HttpStatus.Ok).send(devices);
 });
 
-securityDevicesRouter.delete('/', refreshTokenGuardMiddleware, async (req: Request, res: Response) => {
+securityDevicesRouter.delete('/', refreshTokenGuardMiddleware, async (req: RequestWithSession, res: Response) => {
     const currentUserId = req.currentUserId;
     const currentDeviceId = req.currentDeviceId;
     if (!currentUserId || !currentDeviceId) {
@@ -29,7 +30,7 @@ securityDevicesRouter.delete('/', refreshTokenGuardMiddleware, async (req: Reque
 securityDevicesRouter.delete(
     '/:deviceId',
     refreshTokenGuardMiddleware,
-    async (req: Request<{deviceId: string}>, res: Response) => {
+    async (req: RequestWithSession<{deviceId: string}>, res: Response) => {
         const currentUserId = req.currentUserId;
         if (!currentUserId) {
             return res.sendStatus(HttpStatus.Unauthorized);

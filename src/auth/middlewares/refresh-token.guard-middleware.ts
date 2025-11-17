@@ -1,9 +1,14 @@
-import {Request, Response, NextFunction} from "express";
+import {Response, NextFunction} from "express";
 import {HttpStatus} from "../../core/types/http-statuses";
 import {getRefreshTokenFromRequest} from "../routers/helpers/refresh-token-cookie";
 import {AuthService} from "../application/auth.service";
+import {RequestWithSession} from "../../types/request-with-session";
 
-export async function refreshTokenGuardMiddleware(req: Request, res: Response, next: NextFunction) {
+export async function refreshTokenGuardMiddleware(
+    req: RequestWithSession,
+    res: Response,
+    next: NextFunction,
+) {
     const refreshToken = getRefreshTokenFromRequest(req);
     if (!refreshToken) {
         return res.sendStatus(HttpStatus.Unauthorized);
