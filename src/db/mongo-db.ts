@@ -35,6 +35,10 @@ export type UserDb = {
         confirmationCode: string | null;
         expirationDate: string | null;
     };
+    passwordRecovery: {
+        recoveryCode: string | null;
+        expirationDate: string | null;
+    };
 };
 
 export type CommentDb = {

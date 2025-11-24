@@ -19,6 +19,10 @@ const createUnconfirmedUser = async (overrides: Partial<UserDb> = {}): Promise<U
             confirmationCode: "test-code",
             expirationDate: new Date(Date.now() + 60 * 60 * 1000).toISOString(),
         },
+        passwordRecovery: overrides.passwordRecovery ?? {
+            recoveryCode: null,
+            expirationDate: null,
+        },
     };
 
     await usersCollection.insertOne(user);

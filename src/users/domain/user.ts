@@ -11,7 +11,13 @@ export type EmailConfirmation = {
     expirationDate: string | null;
 };
 
+export type PasswordRecovery = {
+    recoveryCode: string | null;
+    expirationDate: string | null;
+};
+
 export type UserAccount = User & {
     passwordHash: string;
     emailConfirmation: EmailConfirmation;
+    passwordRecovery: PasswordRecovery;
 };

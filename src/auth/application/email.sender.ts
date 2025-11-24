@@ -7,6 +7,11 @@ type RegistrationEmailPayload = {
     confirmationUrl: string;
 };
 
+type PasswordRecoveryEmailPayload = {
+    email: string;
+    recoveryUrl: string;
+};
+
 const MAILTRAP_API_URL = "https://send.api.mailtrap.io/api/send";
 
 const ensureConfiguration = () => {
@@ -51,6 +56,15 @@ const buildRegistrationHtml = (confirmationUrl: string) => {
 `.trim();
 };
 
+const buildPasswordRecoveryHtml = (recoveryUrl: string) => {
+    return `
+<h1>Password recovery</h1>
+       <p>To finish password recovery please follow the link below:
+          <a href='${recoveryUrl}'>recovery password</a>
+      </p>
+    `.trim();
+};
+
 export const EmailSender = {
     async sendRegistrationEmail(data: RegistrationEmailPayload): Promise<void> {
         const configuration = ensureConfiguration();
@@ -72,6 +86,29 @@ export const EmailSender = {
             await sendRequest(emailBody, configuration.apiToken);
         } catch (error) {
             console.error("Failed to send registration email via Mailtrap", error);
+        }
+    },
+
+    async sendPasswordRecoveryEmail(data: PasswordRecoveryEmailPayload): Promise<void> {
+        const configuration = ensureConfiguration();
+        if (!configuration) {
+            return;
+        }
+
+        const emailBody = {
+            from: {
+                email: configuration.fromEmail,
+                name: configuration.fromName || undefined,
+            },
+            to: [{email: data.email}],
+            subject: "Password recovery",
+            html: buildPasswordRecoveryHtml(data.recoveryUrl),
+        };
+
+        try {
+            await sendRequest(emailBody, configuration.apiToken);
+        } catch (error) {
+            console.error("Failed to send password recovery email via Mailtrap", error);
         }
     },
 };

@@ -13,6 +13,10 @@ import {registrationHandler} from "./handlers/registration.handler";
 import {refreshTokenHandler} from "./handlers/refresh-token.handler";
 import {logoutHandler} from "./handlers/logout.handler";
 import {authRateLimitMiddleware} from "../middlewares/auth-rate-limit.middleware";
+import {passwordRecoveryHandler} from "./handlers/password-recovery.handler";
+import {passwordRecoveryValidation} from "../validation/password-recovery-validation.middleware";
+import {newPasswordValidation} from "../validation/new-password-validation.middleware";
+import {newPasswordHandler} from "./handlers/new-password.handler";
 
 export const authRouter = Router();
 
@@ -62,4 +66,20 @@ authRouter.get(
     '/me',
     bearerAuthGuardMiddleware,
     getMeHandler,
+);
+
+authRouter.post(
+    '/password-recovery',
+    authRateLimitMiddleware,
+    passwordRecoveryValidation,
+    inputValidationResultMiddleware,
+    passwordRecoveryHandler,
+);
+
+authRouter.post(
+    '/new-password',
+    authRateLimitMiddleware,
+    newPasswordValidation,
+    inputValidationResultMiddleware,
+    newPasswordHandler,
 );
