@@ -31,6 +31,6 @@ export const userInputValidation = [
         .withMessage('Email must be a string')
         .bail()
         .trim()
-        .matches(/^[\w-.]+@([\w-]+\.)+[\w-]{2,4}$/)
+        .isEmail()
         .withMessage('Email must be valid'),
 ];
