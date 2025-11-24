@@ -1,6 +1,6 @@
 import {Filter, ObjectId} from "mongodb";
 import {usersCollection, UserDb} from "../../db/mongo-db";
-import {EmailConfirmation, User, UserAccount} from "../domain/user";
+import {EmailConfirmation, PasswordRecovery, User, UserAccount} from "../domain/user";
 import {UsersQuery} from "../dto/user.query";
 
 const mapUser = (user: UserDb): User => ({
@@ -14,6 +14,7 @@ const mapUserAccount = (user: UserDb): UserAccount => ({
     ...mapUser(user),
     passwordHash: user.passwordHash,
     emailConfirmation: {...user.emailConfirmation},
+    passwordRecovery: {...(user.passwordRecovery ?? {recoveryCode: null, expirationDate: null})},
 });
 
 export const UsersRepository = {
@@ -68,6 +69,10 @@ export const UsersRepository = {
             passwordHash: data.passwordHash,
             createdAt: new Date().toISOString(),
             emailConfirmation: data.emailConfirmation,
+            passwordRecovery: {
+                recoveryCode: null,
+                expirationDate: null,
+            },
         };
 
         await usersCollection.insertOne(newUser);
@@ -114,6 +119,11 @@ export const UsersRepository = {
         return user ? mapUserAccount(user) : null;
     },
 
+    async findAccountByRecoveryCode(recoveryCode: string): Promise<UserAccount | null> {
+        const user = await usersCollection.findOne({"passwordRecovery.recoveryCode": recoveryCode});
+        return user ? mapUserAccount(user) : null;
+    },
+
     async confirmEmail(userId: string): Promise<boolean> {
         const result = await usersCollection.updateOne(
             {_id: new ObjectId(userId)},
@@ -135,6 +145,32 @@ export const UsersRepository = {
         const result = await usersCollection.updateOne(
             {_id: new ObjectId(userId)},
             {$set: {emailConfirmation: confirmation}},
+        );
+
+        return result.matchedCount === 1;
+    },
+
+    async updatePasswordRecovery(userId: string, recovery: PasswordRecovery): Promise<boolean> {
+        const result = await usersCollection.updateOne(
+            {_id: new ObjectId(userId)},
+            {$set: {passwordRecovery: recovery}},
+        );
+
+        return result.matchedCount === 1;
+    },
+
+    async updatePasswordHash(userId: string, passwordHash: string): Promise<boolean> {
+        const result = await usersCollection.updateOne(
+            {_id: new ObjectId(userId)},
+            {
+                $set: {
+                    passwordHash,
+                    passwordRecovery: {
+                        recoveryCode: null,
+                        expirationDate: null,
+                    },
+                },
+            },
         );
 
         return result.matchedCount === 1;

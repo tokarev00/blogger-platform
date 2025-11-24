@@ -10,6 +10,7 @@ import {RefreshTokensRepository, RefreshTokenModel} from "../repositories/refres
 const REFRESH_TOKEN_TTL_MS = REFRESH_TOKEN_TTL_SECONDS * 1000;
 
 const CONFIRMATION_CODE_TTL_HOURS = 24;
+const RECOVERY_CODE_TTL_HOURS = 24;
 
 const SALT_ROUNDS = 10;
 
@@ -44,6 +45,11 @@ const buildConfirmationData = (overrides?: Partial<EmailConfirmation>): EmailCon
     confirmationCode: overrides?.confirmationCode ?? randomUUID(),
     expirationDate:
         overrides?.expirationDate ?? new Date(Date.now() + CONFIRMATION_CODE_TTL_HOURS * 60 * 60 * 1000).toISOString(),
+});
+
+const buildRecoveryData = () => ({
+    recoveryCode: randomUUID(),
+    expirationDate: new Date(Date.now() + RECOVERY_CODE_TTL_HOURS * 60 * 60 * 1000).toISOString(),
 });
 
 type RegistrationResult =
@@ -189,6 +195,42 @@ export const AuthService = {
         });
 
         return 'success';
+    },
+
+    async requestPasswordRecovery(email: string): Promise<void> {
+        const user = await UsersRepository.findAccountByEmail(email);
+        if (!user) {
+            return;
+        }
+
+        const recovery = buildRecoveryData();
+        await UsersRepository.updatePasswordRecovery(user.id, recovery);
+
+        const recoveryUrl = new URL('https://somesite.com/password-recovery');
+        recoveryUrl.searchParams.set('recoveryCode', recovery.recoveryCode);
+
+        await EmailSender.sendPasswordRecoveryEmail({
+            email: user.email,
+            recoveryUrl: recoveryUrl.toString(),
+        });
+    },
+
+    async confirmPasswordRecovery(recoveryCode: string, newPassword: string): Promise<'success' | 'invalid'> {
+        const user = await UsersRepository.findAccountByRecoveryCode(recoveryCode);
+        if (!user || !user.passwordRecovery.recoveryCode) {
+            return 'invalid';
+        }
+
+        const isExpired =
+            !user.passwordRecovery.expirationDate ||
+            new Date(user.passwordRecovery.expirationDate) < new Date();
+        if (isExpired) {
+            return 'invalid';
+        }
+
+        const passwordHash = await bcrypt.hash(newPassword, SALT_ROUNDS);
+        const updateResult = await UsersRepository.updatePasswordHash(user.id, passwordHash);
+        return updateResult ? 'success' : 'invalid';
     },
 
     async registerUser(
