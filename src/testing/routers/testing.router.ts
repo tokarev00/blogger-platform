@@ -5,6 +5,7 @@ import {
     postsCollection,
     usersCollection,
     commentsCollection,
+    commentLikesCollection,
     refreshTokensCollection,
 } from '../../db/mongo-db';
 import {resetAuthRateLimiter} from "../../auth/middlewares/auth-rate-limit.middleware";
@@ -16,6 +17,7 @@ testingRouter.delete('/all-data', async (req: Request, res: Response) => {
     await postsCollection.deleteMany({});
     await usersCollection.deleteMany({});
     await commentsCollection.deleteMany({});
+    await commentLikesCollection.deleteMany({});
     await refreshTokensCollection.deleteMany({});
     resetAuthRateLimiter();
     return res.sendStatus(HttpStatus.NoContent);

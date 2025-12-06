@@ -6,6 +6,8 @@ import {bearerAuthGuardMiddleware} from "../../auth/middlewares/bearer-auth.guar
 import {commentInputValidation} from "../validation/validate-comment-input.middleware";
 import {updateCommentHandler} from "./handlers/update-comment.handler";
 import {deleteCommentHandler} from "./handlers/delete-comment.handler";
+import {likeStatusValidation} from "../validation/validate-like-status.middleware";
+import {updateCommentLikeStatusHandler} from "./handlers/update-comment-like-status.handler";
 
 export const commentsRouter = Router();
 
@@ -23,6 +25,14 @@ commentsRouter
         commentInputValidation,
         inputValidationResultMiddleware,
         updateCommentHandler,
+    )
+    .put(
+        '/:id/like-status',
+        idValidation,
+        bearerAuthGuardMiddleware,
+        likeStatusValidation,
+        inputValidationResultMiddleware,
+        updateCommentLikeStatusHandler,
     )
     .delete(
         '/:id',

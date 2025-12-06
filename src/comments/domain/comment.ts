@@ -3,6 +3,8 @@ export type CommentatorInfo = {
     userLogin: string;
 };
 
+import {CommentLikeStatus} from "./comment-like";
+
 export type Comment = {
     id: string;
     content: string;
@@ -11,10 +13,19 @@ export type Comment = {
     createdAt: string;
 };
 
-export type CommentViewModel = Omit<Comment, 'postId'>;
+export type CommentLikesInfo = {
+    likesCount: number;
+    dislikesCount: number;
+    myStatus: CommentLikeStatus;
+};
 
-export function mapCommentToView(comment: Comment): CommentViewModel {
+export type CommentViewModel = Omit<Comment, 'postId'> & {likesInfo: CommentLikesInfo};
+
+export function mapCommentToView(comment: Comment, likesInfo?: CommentLikesInfo): CommentViewModel {
     const {postId, ...rest} = comment;
-    return rest;
+    return {
+        ...rest,
+        likesInfo: likesInfo ?? {likesCount: 0, dislikesCount: 0, myStatus: 'None'},
+    };
 }
 
