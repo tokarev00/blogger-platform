@@ -1,5 +1,7 @@
-import {ObjectId} from "mongodb";
+import {Types} from "mongoose";
 import {refreshTokensCollection, RefreshTokenDb} from "../../db/mongo-db";
+
+const {ObjectId} = Types;
 
 export type RefreshToken = {
     id: string;

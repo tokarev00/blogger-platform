@@ -1,7 +1,9 @@
-import {Filter, ObjectId} from "mongodb";
+import {FilterQuery, Types} from "mongoose";
 import {usersCollection, UserDb} from "../../db/mongo-db";
 import {EmailConfirmation, PasswordRecovery, User, UserAccount} from "../domain/user";
 import {UsersQuery} from "../dto/user.query";
+
+const {ObjectId} = Types;
 
 const mapUser = (user: UserDb): User => ({
     id: user._id.toString(),
@@ -26,7 +28,7 @@ export const UsersRepository = {
         pageNumber,
         pageSize,
     }: UsersQuery): Promise<{items: User[]; totalCount: number}> {
-        const searchConditions: Filter<UserDb>[] = [];
+        const searchConditions: FilterQuery<UserDb>[] = [];
 
         if (searchLoginTerm) {
             searchConditions.push({login: {$regex: searchLoginTerm, $options: 'i'}});
@@ -36,7 +38,7 @@ export const UsersRepository = {
             searchConditions.push({email: {$regex: searchEmailTerm, $options: 'i'}});
         }
 
-        const filter: Filter<UserDb> = searchConditions.length === 0
+        const filter: FilterQuery<UserDb> = searchConditions.length === 0
             ? {}
             : searchConditions.length === 1
                 ? searchConditions[0]

@@ -1,7 +1,9 @@
-import {ObjectId} from 'mongodb';
+import {Types} from 'mongoose';
 import {Blog} from '../domain/blog';
 import {blogsCollection, BlogDb} from '../../db/mongo-db';
 import {BlogsQuery} from '../dto/blog.query';
+
+const {ObjectId} = Types;
 
 const mapBlog = (blog: BlogDb): Blog => ({
     id: blog._id.toString(),

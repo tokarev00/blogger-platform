@@ -1,11 +1,12 @@
 import request from "supertest";
 import express from "express";
-import {ObjectId} from "mongodb";
+import {Types} from "mongoose";
 import {setupApp} from "../src/setup-app";
 import {closeDb, runDb, usersCollection, UserDb} from "../src/db/mongo-db";
 import {HttpStatus} from "../src/core/types/http-statuses";
 
 const app = setupApp(express());
+const {ObjectId} = Types;
 
 const createUnconfirmedUser = async (overrides: Partial<UserDb> = {}): Promise<UserDb> => {
     const user: UserDb = {

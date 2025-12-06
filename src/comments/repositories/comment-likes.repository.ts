@@ -1,6 +1,8 @@
-import {ObjectId} from "mongodb";
+import {Types} from "mongoose";
 import {commentLikesCollection, CommentLikeDb} from "../../db/mongo-db";
 import {CommentLikeStatus} from "../domain/comment-like";
+
+const {ObjectId} = Types;
 
 export const CommentLikesRepository = {
     async updateLikeStatus(commentId: string, userId: string, likeStatus: CommentLikeStatus): Promise<void> {

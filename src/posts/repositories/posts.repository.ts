@@ -1,7 +1,9 @@
-import {ObjectId} from 'mongodb';
+import {Types} from 'mongoose';
 import {Post} from '../domain/post';
 import {postsCollection, PostDb} from '../../db/mongo-db';
 import {PostsQuery} from '../dto/post.query';
+
+const {ObjectId} = Types;
 
 const mapPost = (post: PostDb): Post => ({
     id: post._id.toString(),

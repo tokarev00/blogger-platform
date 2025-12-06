@@ -1,7 +1,9 @@
-import {ObjectId} from "mongodb";
+import {Types} from "mongoose";
 import {commentsCollection, CommentDb} from "../../db/mongo-db";
 import {Comment} from "../domain/comment";
 import {CommentsQuery} from "../dto/comment.query";
+
+const {ObjectId} = Types;
 
 const mapComment = (comment: CommentDb): Comment => ({
     id: comment._id.toString(),
