@@ -2,7 +2,7 @@ import crypto from "crypto";
 
 const JWT_SECRET = process.env.JWT_SECRET ?? 'very_secret_key';
 
-const ACCESS_TOKEN_TTL_SECONDS = 10;
+const ACCESS_TOKEN_TTL_SECONDS = 10 * 60;
 const REFRESH_TOKEN_TTL_SECONDS = 20;
 
 function base64UrlEncode(input: Buffer): string {
