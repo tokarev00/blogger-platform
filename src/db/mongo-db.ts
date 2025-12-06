@@ -50,6 +50,13 @@ export type CommentDb = {
     createdAt: string;
 };
 
+export type CommentLikeDb = {
+    _id: ObjectId;
+    commentId: string;
+    userId: string;
+    likeStatus: 'Like' | 'Dislike';
+};
+
 export type RefreshTokenDb = {
     _id: ObjectId;
     tokenId: string;
@@ -259,6 +266,7 @@ export let blogsCollection: CollectionLike<BlogDb>;
 export let postsCollection: CollectionLike<PostDb>;
 export let usersCollection: CollectionLike<UserDb>;
 export let commentsCollection: CollectionLike<CommentDb>;
+export let commentLikesCollection: CollectionLike<CommentLikeDb>;
 export let refreshTokensCollection: CollectionLike<RefreshTokenDb>;
 
 export async function runDb() {
@@ -267,6 +275,7 @@ export async function runDb() {
         postsCollection = new InMemoryCollection<PostDb>();
         usersCollection = new InMemoryCollection<UserDb>();
         commentsCollection = new InMemoryCollection<CommentDb>();
+        commentLikesCollection = new InMemoryCollection<CommentLikeDb>();
         refreshTokensCollection = new InMemoryCollection<RefreshTokenDb>();
         return;
     }
@@ -281,6 +290,7 @@ export async function runDb() {
     postsCollection = db.collection<PostDb>('posts');
     usersCollection = db.collection<UserDb>('users');
     commentsCollection = db.collection<CommentDb>('comments');
+    commentLikesCollection = db.collection<CommentLikeDb>('commentLikes');
     refreshTokensCollection = db.collection<RefreshTokenDb>('refreshTokens');
 }
 
@@ -290,6 +300,7 @@ export async function closeDb() {
         postsCollection = new InMemoryCollection<PostDb>();
         usersCollection = new InMemoryCollection<UserDb>();
         commentsCollection = new InMemoryCollection<CommentDb>();
+        commentLikesCollection = new InMemoryCollection<CommentLikeDb>();
         refreshTokensCollection = new InMemoryCollection<RefreshTokenDb>();
         return;
     }

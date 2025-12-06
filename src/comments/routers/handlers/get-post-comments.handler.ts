@@ -2,8 +2,8 @@ import {Request, Response} from "express";
 import {parsePaginationQuery} from "../../../core/utils/query";
 import {HttpStatus} from "../../../core/types/http-statuses";
 import {CommentsService} from "../../application/comments.service";
-import {mapCommentToView} from "../../domain/comment";
 import {PostsService} from "../../../posts/application/posts.service";
+import {getUserIdFromAuthorizationHeader} from "../../../auth/utils/get-user-id-from-authorization-header";
 
 export type PostCommentsQuery = {
     pageNumber?: string | string[];
@@ -22,11 +22,12 @@ export async function getPostCommentsHandler(
     }
 
     const paginationQuery = parsePaginationQuery(req.query, {defaultSortBy: 'createdAt'});
-    const comments = await CommentsService.findAllByPostId(req.params.postId, paginationQuery);
+    const userId = getUserIdFromAuthorizationHeader(req.headers.authorization);
+    const comments = await CommentsService.findAllByPostId(req.params.postId, paginationQuery, userId);
 
     return res.status(HttpStatus.Ok).send({
         ...comments,
-        items: comments.items.map(mapCommentToView),
+        items: comments.items,
     });
 }
 
