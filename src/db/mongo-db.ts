@@ -1,12 +1,14 @@
-import {MongoClient, ObjectId} from 'mongodb';
+import mongoose, {Schema, Types} from 'mongoose';
 import dotenv from 'dotenv';
 
 dotenv.config();
 
+const {ObjectId} = Types;
+
 const dbName = 'blogger-platform';
 
 export type BlogDb = {
-    _id: ObjectId;
+    _id: Types.ObjectId;
     name: string;
     description: string;
     websiteUrl: string;
@@ -15,7 +17,7 @@ export type BlogDb = {
 };
 
 export type PostDb = {
-    _id: ObjectId;
+    _id: Types.ObjectId;
     title: string;
     shortDescription: string;
     content: string;
@@ -25,7 +27,7 @@ export type PostDb = {
 };
 
 export type UserDb = {
-    _id: ObjectId;
+    _id: Types.ObjectId;
     login: string;
     email: string;
     passwordHash: string;
@@ -42,7 +44,7 @@ export type UserDb = {
 };
 
 export type CommentDb = {
-    _id: ObjectId;
+    _id: Types.ObjectId;
     postId: string;
     content: string;
     userId: string;
@@ -51,14 +53,14 @@ export type CommentDb = {
 };
 
 export type CommentLikeDb = {
-    _id: ObjectId;
+    _id: Types.ObjectId;
     commentId: string;
     userId: string;
     likeStatus: 'Like' | 'Dislike';
 };
 
 export type RefreshTokenDb = {
-    _id: ObjectId;
+    _id: Types.ObjectId;
     tokenId: string;
     userId: string;
     deviceId: string;
@@ -79,7 +81,7 @@ type CursorLike<T> = {
     toArray(): Promise<T[]>;
 };
 
-export type CollectionLike<T extends {_id: ObjectId}> = {
+export type CollectionLike<T extends {_id: Types.ObjectId}> = {
     find(filter?: any): CursorLike<T>;
     findOne(filter: any): Promise<T | null>;
     insertOne(doc: T): Promise<{acknowledged: boolean}>;
@@ -89,7 +91,7 @@ export type CollectionLike<T extends {_id: ObjectId}> = {
     countDocuments(filter?: any): Promise<number>;
 };
 
-class InMemoryCursor<T extends {_id: ObjectId}> implements CursorLike<T> {
+class InMemoryCursor<T extends {_id: Types.ObjectId}> implements CursorLike<T> {
     private sortParams: Array<[string, 1 | -1]> = [];
     private skipValue = 0;
     private limitValue: number | undefined;
@@ -128,7 +130,7 @@ class InMemoryCursor<T extends {_id: ObjectId}> implements CursorLike<T> {
     }
 }
 
-class InMemoryCollection<T extends {_id: ObjectId}> implements CollectionLike<T> {
+class InMemoryCollection<T extends {_id: Types.ObjectId}> implements CollectionLike<T> {
     private data: T[] = [];
 
     find(filter: any = {}): CursorLike<T> {
@@ -136,38 +138,35 @@ class InMemoryCollection<T extends {_id: ObjectId}> implements CollectionLike<T>
     }
 
     async findOne(filter: any): Promise<T | null> {
-        return this.data.find((doc) => matchesFilter(doc, filter)) ?? null;
+        const doc = this.data.find((doc) => matchesFilter(doc, filter));
+        return doc ?? null;
     }
 
     async insertOne(doc: T): Promise<{acknowledged: boolean}> {
-        this.data.push({...doc});
+        this.data.push(doc);
         return {acknowledged: true};
     }
 
     async updateOne(filter: any, update: any): Promise<{acknowledged: boolean; matchedCount: number}> {
-        const item = this.data.find((doc) => matchesFilter(doc, filter));
-        if (!item) {
+        const doc = this.data.find((doc) => matchesFilter(doc, filter));
+        if (!doc) {
             return {acknowledged: true, matchedCount: 0};
         }
-        if (update && update.$set && typeof update.$set === 'object') {
-            Object.assign(item, update.$set);
+        if (update.$set) {
+            Object.assign(doc as object, update.$set);
         }
         return {acknowledged: true, matchedCount: 1};
     }
 
     async deleteOne(filter: any): Promise<{acknowledged: boolean; deletedCount: number}> {
-        const index = this.data.findIndex((doc) => matchesFilter(doc, filter));
-        if (index === -1) {
-            return {acknowledged: true, deletedCount: 0};
-        }
-        this.data.splice(index, 1);
-        return {acknowledged: true, deletedCount: 1};
+        const initialLength = this.data.length;
+        this.data = this.data.filter((doc) => !matchesFilter(doc, filter));
+        return {acknowledged: true, deletedCount: initialLength - this.data.length};
     }
 
     async deleteMany(filter: any): Promise<{acknowledged: boolean; deletedCount: number}> {
         const initialLength = this.data.length;
-        const normalizedFilter = filter ?? {};
-        this.data = this.data.filter((doc) => !matchesFilter(doc, normalizedFilter));
+        this.data = this.data.filter((doc) => !matchesFilter(doc, filter));
         return {acknowledged: true, deletedCount: initialLength - this.data.length};
     }
 
@@ -176,16 +175,67 @@ class InMemoryCollection<T extends {_id: ObjectId}> implements CollectionLike<T>
     }
 }
 
-function matchesFilter<T extends {_id: ObjectId}>(doc: T, filter: any): boolean {
-    if (!filter || Object.keys(filter).length === 0) {
-        return true;
+class MongooseCursor<T extends {_id: Types.ObjectId}> implements CursorLike<T> {
+    constructor(private query: mongoose.Query<T[], any>) {}
+
+    sort(sort: SortSpecification): CursorLike<T> {
+        this.query = this.query.sort(sort);
+        return this;
     }
 
-    return Object.entries(filter).every(([key, value]) => {
-        if (key === '$or' && Array.isArray(value)) {
-            return value.some((nested) => matchesFilter(doc, nested));
-        }
+    skip(skip: number): CursorLike<T> {
+        this.query = this.query.skip(skip);
+        return this;
+    }
 
+    limit(limit: number): CursorLike<T> {
+        this.query = this.query.limit(limit);
+        return this;
+    }
+
+    async toArray(): Promise<T[]> {
+        return this.query.lean<T>().exec();
+    }
+}
+
+class MongooseCollection<T extends {_id: Types.ObjectId}> implements CollectionLike<T> {
+    constructor(private readonly model: mongoose.Model<T>) {}
+
+    find(filter: any = {}): CursorLike<T> {
+        return new MongooseCursor(this.model.find(filter));
+    }
+
+    async findOne(filter: any): Promise<T | null> {
+        return this.model.findOne(filter).lean<T>().exec();
+    }
+
+    async insertOne(doc: T): Promise<{acknowledged: boolean}> {
+        await this.model.create(doc);
+        return {acknowledged: true};
+    }
+
+    async updateOne(filter: any, update: any): Promise<{acknowledged: boolean; matchedCount: number}> {
+        const result = await this.model.updateOne(filter, update);
+        return {acknowledged: result.acknowledged, matchedCount: result.matchedCount};
+    }
+
+    async deleteOne(filter: any): Promise<{acknowledged: boolean; deletedCount: number}> {
+        const result = await this.model.deleteOne(filter);
+        return {acknowledged: result.acknowledged, deletedCount: result.deletedCount};
+    }
+
+    async deleteMany(filter: any): Promise<{acknowledged: boolean; deletedCount: number}> {
+        const result = await this.model.deleteMany(filter);
+        return {acknowledged: result.acknowledged, deletedCount: result.deletedCount};
+    }
+
+    async countDocuments(filter: any = {}): Promise<number> {
+        return this.model.countDocuments(filter);
+    }
+}
+
+function matchesFilter<T>(doc: T, filter: any): boolean {
+    return Object.entries(filter).every(([key, value]) => {
         const docValue = getValueByPath(doc, key);
         return matchCondition(docValue, value);
     });
@@ -198,8 +248,8 @@ function matchCondition(docValue: any, condition: any): boolean {
         const regex = new RegExp(pattern, options);
         return regex.test(String(docValue ?? ''));
     }
-    if (condition instanceof ObjectId) {
-        return docValue instanceof ObjectId && docValue.equals(condition);
+    if (condition instanceof Types.ObjectId) {
+        return docValue instanceof Types.ObjectId && docValue.equals(condition);
     }
     if (condition && typeof condition === 'object' && !Array.isArray(condition)) {
         return matchesFilter(docValue ?? {}, condition);
@@ -236,7 +286,7 @@ function compareDocuments<T>(a: T, b: T, sortParams: Array<[string, 1 | -1]>): n
 }
 
 function normalizeValue(value: unknown): string {
-    if (value instanceof ObjectId) {
+    if (value instanceof Types.ObjectId) {
         return value.toString();
     }
     if (value instanceof Date) {
@@ -248,10 +298,9 @@ function normalizeValue(value: unknown): string {
     return String(value);
 }
 
-let client: MongoClient | null = null;
+const mongoUrl = process.env.MONGO_URL;
 let useInMemoryStorage = false;
 
-const mongoUrl = process.env.MONGO_URL;
 if (!mongoUrl) {
     if (process.env.NODE_ENV === 'test') {
         useInMemoryStorage = true;
@@ -259,8 +308,98 @@ if (!mongoUrl) {
         throw new Error('MONGO_URL not found');
     }
 } else {
-    client = new MongoClient(mongoUrl);
+    mongoose.set('strictQuery', true);
 }
+
+const blogSchema = new Schema<BlogDb>(
+    {
+        _id: {type: Schema.Types.ObjectId, default: () => new ObjectId()},
+        name: {type: String, required: true},
+        description: {type: String, required: true},
+        websiteUrl: {type: String, required: true},
+        createdAt: {type: String, required: true},
+        isMembership: {type: Boolean, required: true},
+    },
+    {versionKey: false}
+);
+
+const postSchema = new Schema<PostDb>(
+    {
+        _id: {type: Schema.Types.ObjectId, default: () => new ObjectId()},
+        title: {type: String, required: true},
+        shortDescription: {type: String, required: true},
+        content: {type: String, required: true},
+        blogId: {type: String, required: true},
+        blogName: {type: String, required: true},
+        createdAt: {type: String, required: true},
+    },
+    {versionKey: false}
+);
+
+const userSchema = new Schema<UserDb>(
+    {
+        _id: {type: Schema.Types.ObjectId, default: () => new ObjectId()},
+        login: {type: String, required: true},
+        email: {type: String, required: true},
+        passwordHash: {type: String, required: true},
+        createdAt: {type: String, required: true},
+        emailConfirmation: {
+            isConfirmed: {type: Boolean, required: true},
+            confirmationCode: {type: String, default: null},
+            expirationDate: {type: String, default: null},
+        },
+        passwordRecovery: {
+            recoveryCode: {type: String, default: null},
+            expirationDate: {type: String, default: null},
+        },
+    },
+    {versionKey: false}
+);
+
+const commentSchema = new Schema<CommentDb>(
+    {
+        _id: {type: Schema.Types.ObjectId, default: () => new ObjectId()},
+        postId: {type: String, required: true},
+        content: {type: String, required: true},
+        userId: {type: String, required: true},
+        userLogin: {type: String, required: true},
+        createdAt: {type: String, required: true},
+    },
+    {versionKey: false}
+);
+
+const commentLikeSchema = new Schema<CommentLikeDb>(
+    {
+        _id: {type: Schema.Types.ObjectId, default: () => new ObjectId()},
+        commentId: {type: String, required: true},
+        userId: {type: String, required: true},
+        likeStatus: {type: String, enum: ['Like', 'Dislike'], required: true},
+    },
+    {versionKey: false}
+);
+
+const refreshTokenSchema = new Schema<RefreshTokenDb>(
+    {
+        _id: {type: Schema.Types.ObjectId, default: () => new ObjectId()},
+        tokenId: {type: String, required: true},
+        userId: {type: String, required: true},
+        deviceId: {type: String, required: true},
+        ip: {type: String, required: true},
+        title: {type: String, required: true},
+        lastActiveDate: {type: String, required: true},
+        createdAt: {type: String, required: true},
+        expiresAt: {type: String, required: true},
+        isRevoked: {type: Boolean, required: true},
+    },
+    {versionKey: false}
+);
+
+const BlogModel = mongoose.model<BlogDb>('Blog', blogSchema, 'blogs');
+const PostModel = mongoose.model<PostDb>('Post', postSchema, 'posts');
+const UserModel = mongoose.model<UserDb>('User', userSchema, 'users');
+const CommentModel = mongoose.model<CommentDb>('Comment', commentSchema, 'comments');
+const CommentLikeModel = mongoose.model<CommentLikeDb>('CommentLike', commentLikeSchema, 'commentLikes');
+const RefreshTokenModel = mongoose.model<RefreshTokenDb>('RefreshToken', refreshTokenSchema, 'refreshTokens');
 
 export let blogsCollection: CollectionLike<BlogDb>;
 export let postsCollection: CollectionLike<PostDb>;
@@ -280,18 +419,17 @@ export async function runDb() {
         return;
     }
 
-    if (!client) {
-        throw new Error('Mongo client not initialized');
+    if (!mongoUrl) {
+        throw new Error('Mongo URL is not defined');
     }
 
-    await client.connect();
-    const db = client.db(dbName);
-    blogsCollection = db.collection<BlogDb>('blogs');
-    postsCollection = db.collection<PostDb>('posts');
-    usersCollection = db.collection<UserDb>('users');
-    commentsCollection = db.collection<CommentDb>('comments');
-    commentLikesCollection = db.collection<CommentLikeDb>('commentLikes');
-    refreshTokensCollection = db.collection<RefreshTokenDb>('refreshTokens');
+    await mongoose.connect(mongoUrl, {dbName});
+    blogsCollection = new MongooseCollection(BlogModel);
+    postsCollection = new MongooseCollection(PostModel);
+    usersCollection = new MongooseCollection(UserModel);
+    commentsCollection = new MongooseCollection(CommentModel);
+    commentLikesCollection = new MongooseCollection(CommentLikeModel);
+    refreshTokensCollection = new MongooseCollection(RefreshTokenModel);
 }
 
 export async function closeDb() {
@@ -305,7 +443,5 @@ export async function closeDb() {
         return;
     }
 
-    if (client) {
-        await client.close();
-    }
+    await mongoose.connection.close();
 }
