@@ -3,6 +3,7 @@ import {HttpStatus} from "../../../core/types/http-statuses";
 import {BlogsRepository} from "../../repositories/blogs.repository";
 import {PostsService} from "../../../posts/application/posts.service";
 import {parsePaginationQuery} from "../../../core/utils/query";
+import {getUserIdFromAuthorizationHeader} from "../../../auth/utils/get-user-id-from-authorization-header";
 
 type BlogPostsQuery = {
     pageNumber?: string | string[];
@@ -21,6 +22,7 @@ export async function getBlogPostsHandler(
     }
 
     const paginationQuery = parsePaginationQuery(req.query, {defaultSortBy: 'createdAt'});
-    const posts = await PostsService.findAllByBlogId(req.params.id, paginationQuery);
+    const userId = getUserIdFromAuthorizationHeader(req.headers.authorization);
+    const posts = await PostsService.findAllByBlogId(req.params.id, paginationQuery, userId);
     return res.status(HttpStatus.Ok).send(posts);
 }

@@ -1,4 +1,4 @@
-import {Post} from '../domain/post';
+import {mapPostToView, Post, PostViewModel} from '../domain/post';
 import {PostInputDto} from '../dto/post.input-dto';
 import {PostsRepository} from '../repositories/posts.repository';
 import {BlogsRepository} from '../../blogs/repositories/blogs.repository';
@@ -6,41 +6,51 @@ import {PostForBlogInputDto} from "../dto/post-for-blog.input-dto";
 import {PostsQuery} from '../dto/post.query';
 import {buildPaginator} from '../../core/utils/paginator';
 import {Paginator} from '../../core/types/pagination';
+import {PostLikesRepository} from "../repositories/post-likes.repository";
+import {PostLikeStatus} from "../domain/post-like";
+import {UsersRepository} from "../../users/repositories/users.repository";
 
 export const PostsService = {
-    async findAll(query: PostsQuery): Promise<Paginator<Post>> {
+    async findAll(query: PostsQuery, userId?: string): Promise<Paginator<PostViewModel>> {
         const {items, totalCount} = await PostsRepository.findAll(query);
-        return buildPaginator(items, totalCount, query.pageNumber, query.pageSize);
+        const itemsWithLikes = await Promise.all(items.map((post) => this.mapPostWithLikes(post, userId)));
+        return buildPaginator(itemsWithLikes, totalCount, query.pageNumber, query.pageSize);
     },
 
-    async findAllByBlogId(blogId: string, query: PostsQuery): Promise<Paginator<Post>> {
+    async findAllByBlogId(blogId: string, query: PostsQuery, userId?: string): Promise<Paginator<PostViewModel>> {
         const {items, totalCount} = await PostsRepository.findAllByBlogId(blogId, query);
-        return buildPaginator(items, totalCount, query.pageNumber, query.pageSize);
+        const itemsWithLikes = await Promise.all(items.map((post) => this.mapPostWithLikes(post, userId)));
+        return buildPaginator(itemsWithLikes, totalCount, query.pageNumber, query.pageSize);
     },
 
-    async findById(id: string): Promise<Post | null> {
-        return PostsRepository.findById(id);
+    async findById(id: string, userId?: string): Promise<PostViewModel | null> {
+        const post = await PostsRepository.findById(id);
+        if (!post) {
+            return null;
+        }
+        return this.mapPostWithLikes(post, userId);
     },
 
-    async create(data: PostInputDto): Promise<Post | null> {
+    async create(data: PostInputDto): Promise<PostViewModel | null> {
         return this.createForBlog(data.blogId, data);
     },
 
     async createForBlog(
         blogId: string,
         data: PostForBlogInputDto,
-    ): Promise<Post | null> {
+    ): Promise<PostViewModel | null> {
         const blog = await BlogsRepository.findById(blogId);
         if (!blog) {
             return null;
         }
-        return PostsRepository.create({
+        const post = await PostsRepository.create({
             title: data.title,
             shortDescription: data.shortDescription,
             content: data.content,
             blogId,
             blogName: blog.name,
         });
+        return mapPostToView(post);
     },
 
     async update(
@@ -73,5 +83,35 @@ export const PostsService = {
         await PostsRepository.delete(id);
         return true;
     },
-};
 
+    async updateLikeStatus(
+        postId: string,
+        userId: string,
+        likeStatus: PostLikeStatus,
+    ): Promise<'notFound' | 'userNotFound' | 'success'> {
+        const post = await PostsRepository.findById(postId);
+        if (!post) {
+            return 'notFound';
+        }
+
+        const user = await UsersRepository.findById(userId);
+        if (!user) {
+            return 'userNotFound';
+        }
+
+        await PostLikesRepository.updateLikeStatus(postId, userId, user.login, likeStatus);
+        return 'success';
+    },
+
+    async mapPostWithLikes(post: Post, userId?: string): Promise<PostViewModel> {
+        const [likesInfo, newestLikes] = await Promise.all([
+            PostLikesRepository.getLikesInfo(post.id, userId),
+            PostLikesRepository.getNewestLikes(post.id),
+        ]);
+
+        return mapPostToView(post, {
+            ...likesInfo,
+            newestLikes,
+        });
+    },
+};
