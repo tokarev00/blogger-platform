@@ -12,6 +12,8 @@ import {getPostCommentsHandler} from "../../comments/routers/handlers/get-post-c
 import {bearerAuthGuardMiddleware} from "../../auth/middlewares/bearer-auth.guard-middleware";
 import {commentInputValidation} from "../../comments/validation/validate-comment-input.middleware";
 import {createPostCommentHandler} from "../../comments/routers/handlers/create-post-comment.handler";
+import {likeStatusValidation} from "../validation/validate-like-status.middleware";
+import {updatePostLikeStatusHandler} from "./handlers/update-post-like-status.handler";
 
 export const postsRouter = Router();
 
@@ -49,6 +51,15 @@ postsRouter
         commentInputValidation,
         inputValidationResultMiddleware,
         createPostCommentHandler,
+    )
+
+    .put(
+        '/:postId/like-status',
+        postIdValidation,
+        bearerAuthGuardMiddleware,
+        likeStatusValidation,
+        inputValidationResultMiddleware,
+        updatePostLikeStatusHandler,
     )
 
     .put(

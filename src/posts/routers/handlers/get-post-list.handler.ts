@@ -2,6 +2,7 @@ import { Request, Response } from 'express';
 import {HttpStatus} from "../../../core/types/http-statuses";
 import {PostsService} from "../../application/posts.service";
 import {parsePaginationQuery} from "../../../core/utils/query";
+import {getUserIdFromAuthorizationHeader} from "../../../auth/utils/get-user-id-from-authorization-header";
 
 type PostListQuery = {
     pageNumber?: string | string[];
@@ -15,6 +16,7 @@ export async function getPostListHandler(
     res: Response,
 ) {
     const paginationQuery = parsePaginationQuery(req.query, {defaultSortBy: 'createdAt'});
-    const posts = await PostsService.findAll(paginationQuery);
+    const userId = getUserIdFromAuthorizationHeader(req.headers.authorization);
+    const posts = await PostsService.findAll(paginationQuery, userId);
     return res.status(HttpStatus.Ok).send(posts);
 }
