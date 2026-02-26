@@ -52,6 +52,12 @@ const buildRecoveryData = () => ({
     expirationDate: new Date(Date.now() + RECOVERY_CODE_TTL_HOURS * 60 * 60 * 1000).toISOString(),
 });
 
+const sendEmailInBackground = (task: Promise<void>, context: string) => {
+    void task.catch((error: unknown) => {
+        console.error(`Background email send failed (${context})`, error);
+    });
+};
+
 type RegistrationResult =
     | {status: "success"}
     | {status: "error"; error: FieldError};
@@ -189,10 +195,13 @@ export const AuthService = {
         const confirmationUrl = new URL('/confirm-email', baseUrl);
         confirmationUrl.searchParams.set('code', confirmationCode);
 
-        await EmailSender.sendRegistrationEmail({
-            email: user.email,
-            confirmationUrl: confirmationUrl.toString(),
-        });
+        sendEmailInBackground(
+            EmailSender.sendRegistrationEmail({
+                email: user.email,
+                confirmationUrl: confirmationUrl.toString(),
+            }),
+            'resendRegistrationEmail',
+        );
 
         return 'success';
     },
@@ -209,10 +218,13 @@ export const AuthService = {
         const recoveryUrl = new URL('https://somesite.com/password-recovery');
         recoveryUrl.searchParams.set('recoveryCode', recovery.recoveryCode);
 
-        await EmailSender.sendPasswordRecoveryEmail({
-            email: user.email,
-            recoveryUrl: recoveryUrl.toString(),
-        });
+        sendEmailInBackground(
+            EmailSender.sendPasswordRecoveryEmail({
+                email: user.email,
+                recoveryUrl: recoveryUrl.toString(),
+            }),
+            'requestPasswordRecovery',
+        );
     },
 
     async confirmPasswordRecovery(recoveryCode: string, newPassword: string): Promise<'success' | 'invalid'> {
@@ -271,10 +283,13 @@ export const AuthService = {
         const confirmationUrl = new URL('/confirm-email', baseUrl);
         confirmationUrl.searchParams.set('code', confirmationCode);
 
-        await EmailSender.sendRegistrationEmail({
-            email: data.email,
-            confirmationUrl: confirmationUrl.toString(),
-        });
+        sendEmailInBackground(
+            EmailSender.sendRegistrationEmail({
+                email: data.email,
+                confirmationUrl: confirmationUrl.toString(),
+            }),
+            'registerUser',
+        );
 
         return {status: 'success'};
     },
